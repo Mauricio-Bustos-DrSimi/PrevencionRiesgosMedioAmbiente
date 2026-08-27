@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Cerrar obligación</title></head>
+  <body>
+    <main>
+      <h1>Cerrar obligación</h1>
+      <p>{{ obligacion.version_actual.nombre }}</p>
+      <form method="post">
+        {% csrf_token %}
+        {{ formulario.as_p }}
+        <button type="submit">Cerrar obligación</button>
+      </form>
+    </main>
+  </body>
+</html>

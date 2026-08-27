@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>{{ titulo }}</title></head>
+  <body>
+    <main>
+      <h1>{{ titulo }}</h1>
+      <p>
+        El modelo reconoce como titulares al centro de costo, trabajador, externo y empresa.
+        La operación del MVP solo habilita centro de costo.
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        {{ formulario.as_p }}
+        <button type="submit">Guardar</button>
+      </form>
+      <a href="{% url 'obligaciones:catalogo' %}">Volver al catálogo</a>
+    </main>
+  </body>
+</html>

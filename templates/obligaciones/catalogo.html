@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Catálogo de obligaciones</title></head>
+  <body>
+    <main>
+      <h1>Catálogo de obligaciones vigente</h1>
+      <p><a href="{% url 'obligaciones:crear' %}">Registrar obligación</a></p>
+      <ul>
+        {% for obligacion in obligaciones %}
+          {% with version=obligacion.version_actual %}
+            <li>
+              <a href="{% url 'obligaciones:detalle' obligacion.pk %}">{{ version.nombre }}</a>
+              — {{ version.norma_origen }} — {{ version.get_titular_display }} — {{ version.get_periodicidad_display }}
+            </li>
+          {% endwith %}
+        {% empty %}
+          <li>No hay obligaciones vigentes.</li>
+        {% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>

@@ -29,6 +29,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "acceso.apps.AccesoConfig",
+    "bitacora.apps.BitacoraConfig",
+    "centros_costo.apps.CentrosCostoConfig",
+    "obligaciones.apps.ObligacionesConfig",
 ]
 
 MIDDLEWARE = [

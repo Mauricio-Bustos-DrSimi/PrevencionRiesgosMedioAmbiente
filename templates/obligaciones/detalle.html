@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>{{ version_actual.nombre }}</title></head>
+  <body>
+    <main>
+      <h1>{{ version_actual.nombre }}</h1>
+      <p>Norma de origen: {{ version_actual.norma_origen }}</p>
+      <p>Titular de obligación: {{ version_actual.get_titular_display }}</p>
+      <p>Periodicidad: {{ version_actual.get_periodicidad_display }}</p>
+      {% if obligacion.esta_vigente %}
+        <p>Vigente</p>
+        <a href="{% url 'obligaciones:corregir' obligacion.pk %}">Corregir</a>
+        <a href="{% url 'obligaciones:cerrar' obligacion.pk %}">Cerrar</a>
+      {% else %}
+        <p>Cerrada el {{ version_actual.fecha_cierre }}</p>
+      {% endif %}
+
+      <h2>Historial de versiones</h2>
+      <ol>
+        {% for version in obligacion.versiones.all %}
+          <li>
+            Versión {{ version.numero }} — {{ version.get_tipo_version_display }} —
+            {{ version.nombre }} — {{ version.norma_origen }} —
+            {{ version.get_titular_display }} — {{ version.get_periodicidad_display }} —
+            Autor: {{ version.autor.username }} — Motivo: {{ version.motivo }}
+            {% if version.fecha_cierre %}— Fecha de cierre: {{ version.fecha_cierre }}{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+      <a href="{% url 'obligaciones:catalogo' %}">Volver al catálogo</a>
+    </main>
+  </body>
+</html>
