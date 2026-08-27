@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Importar datos</title></head>
+  <body>
+    <main>
+      <h1>Importar datos iniciales</h1>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}{{ formulario.as_p }}<button type="submit">Procesar archivo</button>
+      </form>
+      {% if resultado %}
+        <h2>Resultado</h2>
+        <p>Aceptadas: {{ resultado.aceptadas }}</p>
+        <p>Rechazadas: {{ resultado.rechazadas }}</p>
+        <p>Duplicadas: {{ resultado.duplicadas }}</p>
+        <ul>{% for fila in resultado.filas %}<li>Fila {{ fila.numero }} — {{ fila.estado }}: {{ fila.detalle }}</li>{% endfor %}</ul>
+      {% endif %}
+    </main>
+  </body>
+</html>

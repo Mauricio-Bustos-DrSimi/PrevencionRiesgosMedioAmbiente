@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "centros_costo.apps.CentrosCostoConfig",
     "obligaciones.apps.ObligacionesConfig",
     "planes_aplicacion.apps.PlanesAplicacionConfig",
+    "importaciones.apps.ImportacionesConfig",
 ]
 
 MIDDLEWARE = [
