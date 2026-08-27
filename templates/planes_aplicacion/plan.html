@@ -20,6 +20,9 @@
             <li>{{ item.obligacion.version_actual.nombre }} —
               {% if item.cambio %}{% if item.cambio.aplica %}Sin evidencia{% else %}No aplica{% endif %}
               {% else %}Sin configurar{% endif %}
+              {% if item.cambio and item.cambio.aplica and not fecha %}
+                <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
+              {% endif %}
             </li>
         {% empty %}<li>No hay obligaciones sugeridas.</li>{% endfor %}
       </ul>

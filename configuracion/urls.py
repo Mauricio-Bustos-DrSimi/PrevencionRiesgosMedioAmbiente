@@ -16,5 +16,6 @@ urlpatterns = [
     path("obligaciones/", include("obligaciones.urls")),
     path("planes-aplicacion/", include("planes_aplicacion.urls")),
     path("importaciones/", include("importaciones.urls")),
+    path("evidencias/", include("evidencias.urls")),
     path("admin/", admin.site.urls),
 ]

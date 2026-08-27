@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Cargar evidencia</title></head>
+  <body><main><h1>Cargar evidencia: {{ obligacion.version_actual.nombre }}</h1>
+    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+    <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ formulario.as_p }}<button type="submit">Cargar evidencia</button></form>
+  </main></body>
+</html>
