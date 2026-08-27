@@ -1,0 +1,3 @@
+-r requirements.txt
+django-stubs[compatible-mypy]>=5.2,<5.3
+mypy>=1.17,<2
