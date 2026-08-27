@@ -83,6 +83,11 @@ class VersionObligacion(models.Model):
     norma_origen = models.CharField("norma de origen", max_length=255)
     titular = models.CharField(max_length=30, choices=TitularObligacion.choices)
     periodicidad = models.CharField(max_length=30, choices=Periodicidad.choices)
+    tipos_centro = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Tipos de centro sugeridos; vacío significa todos.",
+    )
     tipo_version = models.CharField(max_length=20, choices=TipoVersion.choices)
     fecha_cierre = models.DateField(null=True, blank=True)
     autor = models.ForeignKey[AbstractUser, AbstractUser](

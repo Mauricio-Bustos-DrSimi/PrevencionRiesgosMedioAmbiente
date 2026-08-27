@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "bitacora.apps.BitacoraConfig",
     "centros_costo.apps.CentrosCostoConfig",
     "obligaciones.apps.ObligacionesConfig",
+    "planes_aplicacion.apps.PlanesAplicacionConfig",
 ]
 
 MIDDLEWARE = [

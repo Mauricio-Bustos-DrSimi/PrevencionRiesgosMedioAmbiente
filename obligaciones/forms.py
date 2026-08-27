@@ -1,5 +1,6 @@
 from django import forms
 
+from centros_costo.models import CentroCosto
 from obligaciones.models import Periodicidad, TitularObligacion
 
 
@@ -13,6 +14,13 @@ class FormularioObligacion(forms.Form):
     periodicidad = forms.ChoiceField(
         label="Periodicidad",
         choices=Periodicidad.choices,
+    )
+    tipos_centro = forms.MultipleChoiceField(
+        label="Tipos de centro sugeridos",
+        choices=CentroCosto.Tipo.choices,
+        required=False,
+        help_text="Vacío significa todos los tipos.",
+        widget=forms.CheckboxSelectMultiple,
     )
     motivo = forms.CharField(label="Motivo", widget=forms.Textarea)
 

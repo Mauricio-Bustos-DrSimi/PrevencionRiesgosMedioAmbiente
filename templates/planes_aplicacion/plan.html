@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Plan de aplicación</title></head>
+  <body>
+    <main>
+      <h1>Plan de aplicación — {{ centro.nombre }}</h1>
+      {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}</p>{% endif %}
+      <p>Tipo de centro de costo: {{ centro.get_tipo_display }}</p>
+      {% if not fecha %}
+        <h2>Sugerencia inicial para {{ centro.get_tipo_display }}</h2>
+        <p>La sugerencia se confirma de forma individual y no se hereda a otros centros.</p>
+        <form method="post" action="{% url 'planes_aplicacion:confirmar_sugerencia' centro.pk %}">
+          {% csrf_token %}<label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Confirmar plan sugerido</button>
+        </form>
+      {% endif %}
+      <h2>Obligaciones del plan</h2>
+      <ul>
+        {% for item in items %}
+            <li>{{ item.obligacion.version_actual.nombre }} —
+              {% if item.cambio %}{% if item.cambio.aplica %}Sin evidencia{% else %}No aplica{% endif %}
+              {% else %}Sin configurar{% endif %}
+            </li>
+        {% empty %}<li>No hay obligaciones sugeridas.</li>{% endfor %}
+      </ul>
+      {% if not fecha %}
+        <h2>Agregar o excluir una obligación</h2>
+        <form method="post" action="{% url 'planes_aplicacion:agregar' centro.pk %}">
+          {% csrf_token %}<label>Obligación <select name="obligacion" required>
+            {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
+          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Agregar al plan</button>
+        </form>
+        <form method="post" action="{% url 'planes_aplicacion:no_aplica' centro.pk %}">
+          {% csrf_token %}<label>Obligación <select name="obligacion" required>
+            {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
+          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Declarar No aplica</button>
+        </form>
+      {% endif %}
+      <h2>Historial de aplicabilidad</h2>
+      <ul>{% for cambio in cambios %}<li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>{% empty %}<li>Sin cambios registrados.</li>{% endfor %}</ul>
+    </main>
+  </body>
+</html>
