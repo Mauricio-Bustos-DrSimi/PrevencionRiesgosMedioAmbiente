@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Operación del piloto</title></head>
+  <body>
+    <main>
+      <h1>Operación del piloto</h1>
+      <p>{{ cantidad_centros }} centros de costo operables</p>
+      {% if piloto_conforme %}
+        <p>Piloto conforme</p>
+      {% else %}
+        <p>El piloto debe contener entre 8 y 10 centros de costo, con varias farmacias, un centro administrativo y una bodega.</p>
+      {% endif %}
+      <form method="get">
+        <label>Estado de cumplimiento
+          <select name="estado">
+            <option value="">Todos</option>
+            {% for valor, nombre in estados %}
+              <option value="{{ valor }}"{% if estado_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Tipo de centro de costo
+          <select name="tipo_centro">
+            <option value="">Todos</option>
+            {% for valor, nombre in tipos_centro %}
+              <option value="{{ valor }}"{% if tipo_centro_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Obligación
+          <select name="obligacion">
+            <option value="">Todas</option>
+            {% for obligacion in obligaciones %}
+              <option value="{{ obligacion.pk }}"{% if obligacion_seleccionada == obligacion.pk %} selected{% endif %}>{{ obligacion.version_actual.nombre }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">Filtrar</button>
+      </form>
+      <ul>
+        {% for caso in casos %}
+          <li>
+            <a href="{% url 'centros_costo:detalle' caso.centro.pk %}">{{ caso.centro.nombre }}</a>
+            — <a href="{% url 'obligaciones:detalle' caso.obligacion.pk %}">{{ caso.nombre_obligacion }}</a>
+            {% if caso.estado == "No aplica" %}
+              — <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Abrir plan de aplicación</a>
+            {% elif caso.evidencia %}
+              — <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
+            {% else %}
+              — <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">Cargar evidencia</a>
+            {% endif %}
+            — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
+          </li>
+        {% empty %}
+          <li>No hay obligaciones configuradas en el piloto.</li>
+        {% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>

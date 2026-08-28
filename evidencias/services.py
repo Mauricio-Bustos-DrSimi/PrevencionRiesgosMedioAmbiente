@@ -309,16 +309,35 @@ def caso_de_cumplimiento(
 
 def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
     cambios_actuales: dict[tuple[int, int], CambioAplicabilidad] = {}
-    for cambio in CambioAplicabilidad.objects.select_related(
-        "centro_costo",
-        "obligacion",
-    ).order_by("centro_costo_id", "obligacion_id", "-ocurrido_en", "-pk"):
+    for cambio in CambioAplicabilidad.objects.filter(
+        centro_costo__es_franquicia=False,
+    ).select_related("centro_costo", "obligacion").order_by(
+        "centro_costo_id",
+        "obligacion_id",
+        "-ocurrido_en",
+        "-pk",
+    ):
         clave = (cambio.centro_costo_id, cambio.obligacion_id)
         cambios_actuales.setdefault(clave, cambio)
 
     casos: list[CasoCumplimiento] = []
     for cambio in cambios_actuales.values():
-        if not cambio.aplica or not cambio.obligacion.esta_vigente:
+        if not cambio.obligacion.esta_vigente:
+            continue
+        if not cambio.aplica:
+            casos.append(
+                CasoCumplimiento(
+                    centro=cambio.centro_costo,
+                    obligacion=cambio.obligacion,
+                    estado=EstadoCumplimiento.NO_APLICA,
+                    evidencia=None,
+                    fecha_fin=None,
+                    version_obligacion=_version_en_fecha(
+                        cambio.obligacion,
+                        en_fecha=en_fecha,
+                    ),
+                )
+            )
             continue
         evidencias = list(
             Evidencia.objects.filter(

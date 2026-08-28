@@ -6,6 +6,7 @@ from . import views
 app_name = "evidencias"
 
 urlpatterns = [
+    path("operacion/", views.operacion, name="operacion"),
     path("pendientes/", views.pendientes, name="pendientes"),
     path("vencimientos/", views.vencimientos, name="vencimientos"),
     path("<int:evidencia_pk>/validar/", views.validar, name="validar"),

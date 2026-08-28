@@ -26,6 +26,66 @@ from .services import (
 )
 
 
+ESTADOS_POR_FILTRO = {
+    "vigente": EstadoCumplimiento.VIGENTE,
+    "por_vencer": EstadoCumplimiento.POR_VENCER,
+    "vencido": EstadoCumplimiento.VENCIDO,
+    "pendiente_validacion": EstadoCumplimiento.PENDIENTE_VALIDACION,
+    "sin_evidencia": EstadoCumplimiento.SIN_EVIDENCIA,
+    "no_aplica": EstadoCumplimiento.NO_APLICA,
+}
+
+
+@requiere_operador_mvp
+def operacion(request: HttpRequest) -> HttpResponse:
+    centros = CentroCosto.objects.filter(es_franquicia=False)
+    cantidad_centros = centros.count()
+    cantidad_farmacias = centros.filter(tipo=CentroCosto.Tipo.FARMACIA).count()
+    cantidad_administrativos = centros.filter(
+        tipo=CentroCosto.Tipo.CENTRO_ADMINISTRATIVO
+    ).count()
+    cantidad_bodegas = centros.filter(tipo=CentroCosto.Tipo.BODEGA).count()
+    piloto_conforme = (
+        8 <= cantidad_centros <= 10
+        and cantidad_farmacias >= 2
+        and cantidad_administrativos == 1
+        and cantidad_bodegas == 1
+    )
+    estado_seleccionado = request.GET.get("estado", "")
+    estado = ESTADOS_POR_FILTRO.get(estado_seleccionado)
+    tipo_centro = request.GET.get("tipo_centro", "")
+    if tipo_centro not in CentroCosto.Tipo.values:
+        tipo_centro = ""
+    obligacion_parametro = request.GET.get("obligacion", "")
+    try:
+        obligacion_pk = int(obligacion_parametro)
+    except ValueError:
+        obligacion_pk = None
+    casos = casos_de_cumplimiento(en_fecha=timezone.localdate())
+    casos = [
+        caso
+        for caso in casos
+        if (estado is None or caso.estado == estado)
+        and (not tipo_centro or caso.centro.tipo == tipo_centro)
+        and (obligacion_pk is None or caso.obligacion.pk == obligacion_pk)
+    ]
+    return render(
+        request,
+        "evidencias/operacion.html",
+        {
+            "casos": casos,
+            "cantidad_centros": cantidad_centros,
+            "piloto_conforme": piloto_conforme,
+            "estado_seleccionado": estado_seleccionado,
+            "estados": ESTADOS_POR_FILTRO.items(),
+            "tipo_centro_seleccionado": tipo_centro,
+            "tipos_centro": CentroCosto.Tipo.choices,
+            "obligacion_seleccionada": obligacion_pk,
+            "obligaciones": Obligacion.objects.prefetch_related("versiones").all(),
+        },
+    )
+
+
 @requiere_operador_mvp
 def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResponse:
     centro = get_object_or_404(CentroCosto, pk=centro_pk, es_franquicia=False)
@@ -82,10 +142,13 @@ def pendientes(request: HttpRequest) -> HttpResponse:
 @requiere_operador_mvp
 def vencimientos(request: HttpRequest) -> HttpResponse:
     estados_por_filtro = {
-        "vencido": EstadoCumplimiento.VENCIDO,
-        "por_vencer": EstadoCumplimiento.POR_VENCER,
-        "sin_evidencia": EstadoCumplimiento.SIN_EVIDENCIA,
-        "pendiente_validacion": EstadoCumplimiento.PENDIENTE_VALIDACION,
+        clave: ESTADOS_POR_FILTRO[clave]
+        for clave in (
+            "vencido",
+            "por_vencer",
+            "sin_evidencia",
+            "pendiente_validacion",
+        )
     }
     estado_seleccionado = request.GET.get("estado", "")
     if estado_seleccionado in estados_por_filtro:
