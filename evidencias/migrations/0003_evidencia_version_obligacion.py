@@ -11,8 +11,11 @@ def asociar_version_de_obligacion(apps: Any, schema_editor: Any) -> None:
 
     for evidencia in Evidencia.objects.all().iterator():
         version = (
-            VersionObligacion.objects.filter(obligacion_id=evidencia.obligacion_id)
-            .order_by("-numero")
+            VersionObligacion.objects.filter(
+                obligacion_id=evidencia.obligacion_id,
+                creada_en__lte=evidencia.cargada_en,
+            )
+            .order_by("-creada_en", "-numero")
             .first()
         )
         if version is None:

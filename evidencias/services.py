@@ -93,7 +93,8 @@ def validar_evidencia(
             entidad="Evidencia",
             identificador=str(evidencia.pk),
             descripcion=(
-                f"Validó evidencia para {evidencia.obligacion}; confirmó "
+                f"Validó evidencia para {evidencia.nombre_obligacion} "
+                f"(versión {evidencia.version_obligacion.numero}); confirmó "
                 "su correspondencia y sus fechas."
             ),
             canal="web",

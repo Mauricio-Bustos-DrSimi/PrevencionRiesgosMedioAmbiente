@@ -101,6 +101,14 @@ class Evidencia(RegistroEvidenciaInmutable):
     def periodicidad_mostrada(self) -> str:
         return self.periodicidad.label
 
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.version_obligacion.obligacion_id != self.obligacion_id:
+            raise ValidationError(
+                "La versión de obligación debe pertenecer a la obligación "
+                "asociada a la evidencia."
+            )
+        super().save(*args, **kwargs)
+
 
 class ValidacionEvidencia(RegistroEvidenciaInmutable):
     evidencia = models.OneToOneField(
