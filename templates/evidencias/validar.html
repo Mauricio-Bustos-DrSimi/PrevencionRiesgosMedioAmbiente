@@ -22,6 +22,9 @@
         <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
       </dl>
       {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+      {% if puede_renovar %}
+        <p><a href="{% url 'evidencias:cargar' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Cargar nueva evidencia</a></p>
+      {% endif %}
       {% if validacion %}
         <p>Validada por {{ validacion.validada_por.username }} el {{ validacion.validada_en }}.</p>
       {% else %}
@@ -31,6 +34,15 @@
           <button type="submit">Validar evidencia</button>
         </form>
       {% endif %}
+      <h2>Evidencias de esta obligación en el centro de costo</h2>
+      <ol>
+        {% for item in historial %}
+          <li>
+            <a href="{% url 'evidencias:validar' item.pk %}">{{ item.emisor }} — {{ item.fecha_emision }}</a>
+            {% if item.validacion %}— Validada{% else %}— Pendiente de validación{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
     </main>
   </body>
 </html>

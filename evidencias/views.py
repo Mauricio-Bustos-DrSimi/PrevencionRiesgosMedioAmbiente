@@ -168,6 +168,11 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             return redirect("evidencias:validar", evidencia_pk=evidencia.pk)
 
     validacion = getattr(evidencia, "validacion", None)
+    historial = Evidencia.objects.filter(
+        centro_costo=evidencia.centro_costo,
+        obligacion=evidencia.obligacion,
+    ).select_related("validacion")
+    cambio = estado_actual(evidencia.centro_costo, evidencia.obligacion)
     estado = estado_de_evidencia(
         evidencia,
         en_fecha=timezone.localdate(),
@@ -180,5 +185,7 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             "validacion": validacion,
             "estado": estado,
             "error": error,
+            "historial": historial,
+            "puede_renovar": cambio is not None and cambio.aplica,
         },
     )

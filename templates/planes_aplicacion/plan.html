@@ -5,6 +5,13 @@
     <main>
       <h1>Plan de aplicación — {{ centro.nombre }}</h1>
       {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}</p>{% endif %}
+      <form method="get">
+        <label>Fecha histórica
+          <input type="date" name="fecha"{% if fecha %} value="{{ fecha|date:'Y-m-d' }}"{% endif %} required>
+        </label>
+        <button type="submit">Consultar estado pasado</button>
+        {% if fecha %}<a href="{% url 'planes_aplicacion:plan' centro.pk %}">Volver al estado actual</a>{% endif %}
+      </form>
       <p>Tipo de centro de costo: {{ centro.get_tipo_display }}</p>
       {% if not fecha %}
         <h2>Sugerencia inicial para {{ centro.get_tipo_display }}</h2>
@@ -17,9 +24,12 @@
       <h2>Obligaciones del plan</h2>
       <ul>
         {% for item in items %}
-            <li>{{ item.obligacion.version_actual.nombre }} —
-              {% if item.cambio %}{% if item.cambio.aplica %}Sin evidencia{% else %}No aplica{% endif %}
+            <li>{% if item.caso %}{{ item.caso.nombre_obligacion }}{% else %}{{ item.obligacion.version_actual.nombre }}{% endif %} —
+              {% if item.caso %}{{ item.caso.estado }}
               {% else %}Sin configurar{% endif %}
+              {% if item.caso.evidencia %}
+                <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
+              {% endif %}
               {% if item.cambio and item.cambio.aplica and not fecha %}
                 <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
               {% endif %}

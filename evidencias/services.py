@@ -1,6 +1,6 @@
 import hashlib
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from enum import StrEnum
 
 from django.conf import settings
@@ -8,10 +8,11 @@ from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
+from django.utils import timezone
 
 from bitacora.registro import registrar_evento
 from centros_costo.models import CentroCosto
-from obligaciones.models import Obligacion, Periodicidad
+from obligaciones.models import Obligacion, Periodicidad, VersionObligacion
 from planes_aplicacion.models import CambioAplicabilidad
 from planes_aplicacion.services import estado_actual
 
@@ -42,6 +43,13 @@ class CasoCumplimiento:
     estado: EstadoCumplimiento
     evidencia: Evidencia | None
     fecha_fin: date | None
+    version_obligacion: VersionObligacion | None = None
+
+    @property
+    def nombre_obligacion(self) -> str:
+        if self.version_obligacion is not None:
+            return self.version_obligacion.nombre
+        return str(self.obligacion)
 
 
 def cargar_evidencia(
@@ -174,9 +182,26 @@ def estado_de_evidencia(
     )
     if estado_vigencia == EstadoCumplimiento.SIN_EVIDENCIA:
         return estado_vigencia
-    if getattr(evidencia, "validacion", None) is None:
+    validacion = getattr(evidencia, "validacion", None)
+    if validacion is None or timezone.localdate(validacion.validada_en) > en_fecha:
         return EstadoCumplimiento.PENDIENTE_VALIDACION
     return estado_vigencia
+
+
+def _fin_del_dia(fecha: date) -> datetime:
+    return timezone.make_aware(datetime.combine(fecha, time.max))
+
+
+def _version_en_fecha(
+    obligacion: Obligacion,
+    *,
+    en_fecha: date,
+) -> VersionObligacion | None:
+    return (
+        obligacion.versiones.filter(creada_en__lte=_fin_del_dia(en_fecha))
+        .order_by("-numero")
+        .first()
+    )
 
 
 def _evidencia_relevante(
@@ -198,6 +223,59 @@ def _evidencia_relevante(
     )
 
 
+def caso_de_cumplimiento(
+    *,
+    centro: CentroCosto,
+    obligacion: Obligacion,
+    en_fecha: date,
+) -> CasoCumplimiento | None:
+    cambio = estado_actual(centro, obligacion, hasta=en_fecha)
+    if cambio is None:
+        return None
+    version = _version_en_fecha(obligacion, en_fecha=en_fecha)
+    if not cambio.aplica:
+        return CasoCumplimiento(
+            centro=centro,
+            obligacion=obligacion,
+            estado=EstadoCumplimiento.NO_APLICA,
+            evidencia=None,
+            fecha_fin=None,
+            version_obligacion=version,
+        )
+
+    evidencias = list(
+        Evidencia.objects.filter(
+            centro_costo=centro,
+            obligacion=obligacion,
+            cargada_en__lte=_fin_del_dia(en_fecha),
+        ).select_related("version_obligacion", "validacion")
+    )
+    evidencia = _evidencia_relevante(evidencias, en_fecha=en_fecha)
+    if evidencia is None:
+        estado = EstadoCumplimiento.SIN_EVIDENCIA
+        fecha_fin = None
+    else:
+        estado = estado_de_evidencia(evidencia, en_fecha=en_fecha)
+        fecha_fin = (
+            fecha_fin_vigencia(evidencia)
+            if estado
+            in {
+                EstadoCumplimiento.VIGENTE,
+                EstadoCumplimiento.POR_VENCER,
+                EstadoCumplimiento.VENCIDO,
+            }
+            else None
+        )
+    return CasoCumplimiento(
+        centro=centro,
+        obligacion=obligacion,
+        estado=estado,
+        evidencia=evidencia,
+        fecha_fin=fecha_fin,
+        version_obligacion=version,
+    )
+
+
 def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
     cambios_actuales: dict[tuple[int, int], CambioAplicabilidad] = {}
     for cambio in CambioAplicabilidad.objects.select_related(
@@ -215,6 +293,7 @@ def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
             Evidencia.objects.filter(
                 centro_costo=cambio.centro_costo,
                 obligacion=cambio.obligacion,
+                cargada_en__lte=_fin_del_dia(en_fecha),
             )
             .select_related("version_obligacion", "validacion")
         )
@@ -241,6 +320,10 @@ def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
                 estado=estado,
                 evidencia=evidencia,
                 fecha_fin=fecha_fin,
+                version_obligacion=_version_en_fecha(
+                    cambio.obligacion,
+                    en_fecha=en_fecha,
+                ),
             )
         )
     return casos
