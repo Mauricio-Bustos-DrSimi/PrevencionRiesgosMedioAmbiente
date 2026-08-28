@@ -35,14 +35,12 @@
       <ul>
         {% for caso in casos %}
           <li>
+            <a href="{% url 'centros_costo:detalle' caso.centro.pk %}">{{ caso.centro.nombre }}</a>
+            — <a href="{% url 'obligaciones:detalle' caso.obligacion.pk %}">{{ caso.obligacion.version_actual.nombre }}</a>
             {% if caso.evidencia %}
-              <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">
-                {{ caso.centro.nombre }} — {{ caso.obligacion.version_actual.nombre }}
-              </a>
+              — <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
             {% else %}
-              <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">
-                {{ caso.centro.nombre }} — {{ caso.obligacion.version_actual.nombre }}
-              </a>
+              — <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">Cargar evidencia</a>
             {% endif %}
             — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
           </li>

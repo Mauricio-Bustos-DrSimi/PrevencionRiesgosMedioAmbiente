@@ -1,6 +1,7 @@
 import hashlib
 from dataclasses import dataclass
 from datetime import date, timedelta
+from enum import StrEnum
 
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -25,7 +26,7 @@ class ErrorValidacionEvidencia(Exception):
     """Indica que una evidencia no admite otra validación."""
 
 
-class EstadoCumplimiento:
+class EstadoCumplimiento(StrEnum):
     VIGENTE = "Vigente"
     POR_VENCER = "Por vencer"
     VENCIDO = "Vencido"
@@ -38,7 +39,7 @@ class EstadoCumplimiento:
 class CasoCumplimiento:
     centro: CentroCosto
     obligacion: Obligacion
-    estado: str
+    estado: EstadoCumplimiento
     evidencia: Evidencia | None
     fecha_fin: date | None
 
@@ -151,13 +152,79 @@ def estado_de_evidencia_validada(
     evidencia: Evidencia,
     *,
     en_fecha: date,
-) -> str:
+) -> EstadoCumplimiento:
     fin = fecha_fin_vigencia(evidencia)
+    if en_fecha < evidencia.fecha_emision:
+        return EstadoCumplimiento.SIN_EVIDENCIA
     if en_fecha > fin:
         return EstadoCumplimiento.VENCIDO
     if en_fecha >= fin - timedelta(days=settings.DIAS_POR_VENCER):
         return EstadoCumplimiento.POR_VENCER
     return EstadoCumplimiento.VIGENTE
+
+
+def estado_de_evidencia(
+    evidencia: Evidencia,
+    *,
+    en_fecha: date,
+) -> EstadoCumplimiento:
+    if en_fecha < evidencia.fecha_emision:
+        return EstadoCumplimiento.SIN_EVIDENCIA
+    if getattr(evidencia, "validacion", None) is None:
+        return EstadoCumplimiento.PENDIENTE_VALIDACION
+    return estado_de_evidencia_validada(evidencia, en_fecha=en_fecha)
+
+
+def _evidencia_relevante(
+    evidencias: list[Evidencia],
+    *,
+    en_fecha: date,
+) -> Evidencia | None:
+    activas: list[Evidencia] = []
+    pendientes: list[Evidencia] = []
+    vencidas: list[Evidencia] = []
+    futuras: list[Evidencia] = []
+    for evidencia in evidencias:
+        estado = estado_de_evidencia(evidencia, en_fecha=en_fecha)
+        if estado in {EstadoCumplimiento.VIGENTE, EstadoCumplimiento.POR_VENCER}:
+            activas.append(evidencia)
+        elif estado == EstadoCumplimiento.PENDIENTE_VALIDACION:
+            pendientes.append(evidencia)
+        elif estado == EstadoCumplimiento.VENCIDO:
+            vencidas.append(evidencia)
+        else:
+            futuras.append(evidencia)
+
+    if activas:
+        return max(
+            activas,
+            key=lambda evidencia: (
+                evidencia.fecha_emision,
+                evidencia.cargada_en,
+                evidencia.pk,
+            ),
+        )
+    if pendientes:
+        return pendientes[0]
+    if vencidas:
+        return max(
+            vencidas,
+            key=lambda evidencia: (
+                fecha_fin_vigencia(evidencia),
+                evidencia.cargada_en,
+                evidencia.pk,
+            ),
+        )
+    if futuras:
+        return min(
+            futuras,
+            key=lambda evidencia: (
+                evidencia.fecha_emision,
+                evidencia.cargada_en,
+                evidencia.pk,
+            ),
+        )
+    return None
 
 
 def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
@@ -173,23 +240,29 @@ def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
     for cambio in cambios_actuales.values():
         if not cambio.aplica:
             continue
-        evidencia = (
+        evidencias = list(
             Evidencia.objects.filter(
                 centro_costo=cambio.centro_costo,
                 obligacion=cambio.obligacion,
             )
-            .select_related("version_obligacion")
-            .first()
+            .select_related("version_obligacion", "validacion")
         )
+        evidencia = _evidencia_relevante(evidencias, en_fecha=en_fecha)
         if evidencia is None:
             estado = EstadoCumplimiento.SIN_EVIDENCIA
             fecha_fin = None
-        elif evidencia.estado_validacion == EstadoEvidencia.PENDIENTE_VALIDACION:
-            estado = EstadoCumplimiento.PENDIENTE_VALIDACION
-            fecha_fin = None
         else:
-            estado = estado_de_evidencia_validada(evidencia, en_fecha=en_fecha)
-            fecha_fin = fecha_fin_vigencia(evidencia)
+            estado = estado_de_evidencia(evidencia, en_fecha=en_fecha)
+            fecha_fin = (
+                fecha_fin_vigencia(evidencia)
+                if estado
+                in {
+                    EstadoCumplimiento.VIGENTE,
+                    EstadoCumplimiento.POR_VENCER,
+                    EstadoCumplimiento.VENCIDO,
+                }
+                else None
+            )
         casos.append(
             CasoCumplimiento(
                 centro=cambio.centro_costo,

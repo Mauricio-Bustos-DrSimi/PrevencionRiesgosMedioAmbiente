@@ -22,7 +22,7 @@ from .services import (
     cargar_evidencia,
     casos_de_cumplimiento,
     EstadoCumplimiento,
-    estado_de_evidencia_validada,
+    estado_de_evidencia,
     validar_evidencia,
 )
 
@@ -167,13 +167,9 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             return redirect("evidencias:validar", evidencia_pk=evidencia.pk)
 
     validacion = getattr(evidencia, "validacion", None)
-    estado = (
-        EstadoCumplimiento.PENDIENTE_VALIDACION
-        if validacion is None
-        else estado_de_evidencia_validada(
-            evidencia,
-            en_fecha=timezone.localdate(),
-        )
+    estado = estado_de_evidencia(
+        evidencia,
+        en_fecha=timezone.localdate(),
     )
     return render(
         request,
