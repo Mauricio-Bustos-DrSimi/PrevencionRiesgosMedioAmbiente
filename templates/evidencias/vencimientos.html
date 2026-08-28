@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Vencimientos</title></head>
+  <body>
+    <main>
+      <h1>Vencimientos</h1>
+      <p>Umbral de Por vencer: {{ dias_por_vencer }} días</p>
+      <form method="get">
+        <label>Estado de cumplimiento
+          <select name="estado">
+            <option value="">Vencido y Por vencer</option>
+            <option value="vencido"{% if estado_seleccionado == "vencido" %} selected{% endif %}>Vencido</option>
+            <option value="por_vencer"{% if estado_seleccionado == "por_vencer" %} selected{% endif %}>Por vencer</option>
+            <option value="sin_evidencia"{% if estado_seleccionado == "sin_evidencia" %} selected{% endif %}>Sin evidencia</option>
+          </select>
+        </label>
+        <label>Tipo de centro de costo
+          <select name="tipo_centro">
+            <option value="">Todos</option>
+            {% for valor, nombre in tipos_centro %}
+              <option value="{{ valor }}"{% if tipo_centro_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Obligación
+          <select name="obligacion">
+            <option value="">Todas</option>
+            {% for obligacion in obligaciones %}
+              <option value="{{ obligacion.pk }}"{% if obligacion_seleccionada == obligacion.pk %} selected{% endif %}>{{ obligacion.version_actual.nombre }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">Filtrar</button>
+      </form>
+      <ul>
+        {% for caso in casos %}
+          <li>
+            {% if caso.evidencia %}
+              <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">
+                {{ caso.centro.nombre }} — {{ caso.obligacion.version_actual.nombre }}
+              </a>
+            {% else %}
+              <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">
+                {{ caso.centro.nombre }} — {{ caso.obligacion.version_actual.nombre }}
+              </a>
+            {% endif %}
+            — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
+          </li>
+        {% empty %}
+          <li>No hay obligaciones vencidas ni por vencer.</li>
+        {% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>

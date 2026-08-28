@@ -12,6 +12,12 @@
     <main>
       <h1>Prevención de Riesgos y Medio Ambiente</h1>
       <p>Gestión de cumplimiento por centro de costo.</p>
+      <nav aria-label="Operación diaria">
+        <ul>
+          <li><a href="{% url 'evidencias:vencimientos' %}">Vencimientos y trabajo pendiente</a></li>
+          <li><a href="{% url 'evidencias:pendientes' %}">Evidencias pendientes de validación</a></li>
+        </ul>
+      </nav>
     </main>
   </body>
 </html>

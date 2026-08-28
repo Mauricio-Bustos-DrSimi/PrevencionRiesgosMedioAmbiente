@@ -21,14 +21,9 @@
         {% if not validacion %}
           <dt>Estado de cumplimiento</dt>
           <dd>Pendiente de validación — No cumplida</dd>
-        {% elif vigente %}
-          <dt>Estado de cumplimiento</dt>
-          <dd>Vigente</dd>
         {% else %}
-          <dt>Validación</dt>
-          <dd>Validada</dd>
-          <dt>Vigencia actual</dt>
-          <dd>Fuera de la ventana calculada</dd>
+          <dt>Estado de cumplimiento</dt>
+          <dd>{{ estado }}</dd>
         {% endif %}
       </dl>
       {% if error %}<p role="alert">{{ error }}</p>{% endif %}

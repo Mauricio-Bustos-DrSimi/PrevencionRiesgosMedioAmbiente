@@ -96,6 +96,8 @@ TIME_ZONE = "America/Santiago"
 USE_I18N = True
 USE_TZ = True
 
+DIAS_POR_VENCER = int(os.environ.get("DIAS_POR_VENCER", "30"))
+
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

@@ -205,8 +205,8 @@ class CargaEvidenciaHttpTests(TestCase):
             )
 
         self.assertNotContains(respuesta, "Vigente")
-        self.assertContains(respuesta, "Validación")
-        self.assertContains(respuesta, "Fuera de la ventana calculada")
+        self.assertContains(respuesta, "Estado de cumplimiento")
+        self.assertContains(respuesta, "Vencido")
 
     def test_usuario_sin_rol_no_puede_validar_evidencia(self) -> None:
         evidencia = self._cargar_evidencia()

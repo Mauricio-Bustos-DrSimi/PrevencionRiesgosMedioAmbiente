@@ -4,6 +4,7 @@ from typing import ParamSpec, TypeVar, cast
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,7 +20,9 @@ from .services import (
     ErrorCargaEvidencia,
     ErrorValidacionEvidencia,
     cargar_evidencia,
-    evidencia_esta_vigente,
+    casos_de_cumplimiento,
+    EstadoCumplimiento,
+    estado_de_evidencia_validada,
     validar_evidencia,
 )
 
@@ -101,6 +104,51 @@ def pendientes(request: HttpRequest) -> HttpResponse:
 
 
 @requiere_prevencionista
+def vencimientos(request: HttpRequest) -> HttpResponse:
+    estados_por_filtro = {
+        "vencido": EstadoCumplimiento.VENCIDO,
+        "por_vencer": EstadoCumplimiento.POR_VENCER,
+        "sin_evidencia": EstadoCumplimiento.SIN_EVIDENCIA,
+    }
+    estado_seleccionado = request.GET.get("estado", "")
+    if estado_seleccionado in estados_por_filtro:
+        estados_visibles = {estados_por_filtro[estado_seleccionado]}
+    else:
+        estados_visibles = {
+            EstadoCumplimiento.POR_VENCER,
+            EstadoCumplimiento.VENCIDO,
+        }
+    tipo_centro = request.GET.get("tipo_centro", "")
+    if tipo_centro not in CentroCosto.Tipo.values:
+        tipo_centro = ""
+    obligacion_parametro = request.GET.get("obligacion", "")
+    try:
+        obligacion_pk = int(obligacion_parametro)
+    except ValueError:
+        obligacion_pk = None
+    casos = [
+        caso
+        for caso in casos_de_cumplimiento(en_fecha=timezone.localdate())
+        if caso.estado in estados_visibles
+        and (not tipo_centro or caso.centro.tipo == tipo_centro)
+        and (obligacion_pk is None or caso.obligacion.pk == obligacion_pk)
+    ]
+    return render(
+        request,
+        "evidencias/vencimientos.html",
+        {
+            "casos": casos,
+            "dias_por_vencer": settings.DIAS_POR_VENCER,
+            "estado_seleccionado": estado_seleccionado,
+            "tipo_centro_seleccionado": tipo_centro,
+            "tipos_centro": CentroCosto.Tipo.choices,
+            "obligacion_seleccionada": obligacion_pk,
+            "obligaciones": Obligacion.objects.prefetch_related("versiones").all(),
+        },
+    )
+
+
+@requiere_prevencionista
 def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     evidencia = get_object_or_404(
         Evidencia.objects.select_related("centro_costo", "obligacion"),
@@ -119,9 +167,13 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             return redirect("evidencias:validar", evidencia_pk=evidencia.pk)
 
     validacion = getattr(evidencia, "validacion", None)
-    vigente = validacion is not None and evidencia_esta_vigente(
-        evidencia,
-        en_fecha=timezone.localdate(),
+    estado = (
+        EstadoCumplimiento.PENDIENTE_VALIDACION
+        if validacion is None
+        else estado_de_evidencia_validada(
+            evidencia,
+            en_fecha=timezone.localdate(),
+        )
     )
     return render(
         request,
@@ -129,7 +181,7 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
         {
             "evidencia": evidencia,
             "validacion": validacion,
-            "vigente": vigente,
+            "estado": estado,
             "error": error,
         },
     )

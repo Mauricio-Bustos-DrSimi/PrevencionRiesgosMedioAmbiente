@@ -1,6 +1,8 @@
 import hashlib
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, timedelta
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.core.files.uploadedfile import UploadedFile
@@ -9,6 +11,7 @@ from django.db import transaction
 from bitacora.registro import registrar_evento
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, Periodicidad
+from planes_aplicacion.models import CambioAplicabilidad
 from planes_aplicacion.services import estado_actual
 
 from .models import EstadoEvidencia, Evidencia, ValidacionEvidencia
@@ -20,6 +23,24 @@ class ErrorCargaEvidencia(Exception):
 
 class ErrorValidacionEvidencia(Exception):
     """Indica que una evidencia no admite otra validación."""
+
+
+class EstadoCumplimiento:
+    VIGENTE = "Vigente"
+    POR_VENCER = "Por vencer"
+    VENCIDO = "Vencido"
+    PENDIENTE_VALIDACION = "Pendiente de validación"
+    SIN_EVIDENCIA = "Sin evidencia"
+    NO_APLICA = "No aplica"
+
+
+@dataclass(frozen=True)
+class CasoCumplimiento:
+    centro: CentroCosto
+    obligacion: Obligacion
+    estado: str
+    evidencia: Evidencia | None
+    fecha_fin: date | None
 
 
 def cargar_evidencia(
@@ -124,3 +145,58 @@ def fecha_fin_vigencia(evidencia: Evidencia) -> date:
 
 def evidencia_esta_vigente(evidencia: Evidencia, *, en_fecha: date) -> bool:
     return evidencia.fecha_emision <= en_fecha <= fecha_fin_vigencia(evidencia)
+
+
+def estado_de_evidencia_validada(
+    evidencia: Evidencia,
+    *,
+    en_fecha: date,
+) -> str:
+    fin = fecha_fin_vigencia(evidencia)
+    if en_fecha > fin:
+        return EstadoCumplimiento.VENCIDO
+    if en_fecha >= fin - timedelta(days=settings.DIAS_POR_VENCER):
+        return EstadoCumplimiento.POR_VENCER
+    return EstadoCumplimiento.VIGENTE
+
+
+def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
+    cambios_actuales: dict[tuple[int, int], CambioAplicabilidad] = {}
+    for cambio in CambioAplicabilidad.objects.select_related(
+        "centro_costo",
+        "obligacion",
+    ).order_by("centro_costo_id", "obligacion_id", "-ocurrido_en", "-pk"):
+        clave = (cambio.centro_costo_id, cambio.obligacion_id)
+        cambios_actuales.setdefault(clave, cambio)
+
+    casos: list[CasoCumplimiento] = []
+    for cambio in cambios_actuales.values():
+        if not cambio.aplica:
+            continue
+        evidencia = (
+            Evidencia.objects.filter(
+                centro_costo=cambio.centro_costo,
+                obligacion=cambio.obligacion,
+            )
+            .select_related("version_obligacion")
+            .first()
+        )
+        if evidencia is None:
+            estado = EstadoCumplimiento.SIN_EVIDENCIA
+            fecha_fin = None
+        elif evidencia.estado_validacion == EstadoEvidencia.PENDIENTE_VALIDACION:
+            estado = EstadoCumplimiento.PENDIENTE_VALIDACION
+            fecha_fin = None
+        else:
+            estado = estado_de_evidencia_validada(evidencia, en_fecha=en_fecha)
+            fecha_fin = fecha_fin_vigencia(evidencia)
+        casos.append(
+            CasoCumplimiento(
+                centro=cambio.centro_costo,
+                obligacion=cambio.obligacion,
+                estado=estado,
+                evidencia=evidencia,
+                fecha_fin=fecha_fin,
+            )
+        )
+    return casos

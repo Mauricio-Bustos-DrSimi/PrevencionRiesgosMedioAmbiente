@@ -51,6 +51,14 @@ class PortadaProtegidaTests(TestCase):
         self.assertEqual(respuesta_portada.status_code, 200)
         self.assertTemplateUsed(respuesta_portada, "acceso/inicio.html")
         self.assertContains(respuesta_portada, "prevencionista")
+        self.assertContains(
+            respuesta_portada,
+            reverse("evidencias:vencimientos"),
+        )
+        self.assertContains(
+            respuesta_portada,
+            reverse("evidencias:pendientes"),
+        )
 
     def test_sysadmin_crea_cuenta_y_asigna_el_grupo_prevencionista(self) -> None:
         sysadmin = get_user_model().objects.create_superuser(

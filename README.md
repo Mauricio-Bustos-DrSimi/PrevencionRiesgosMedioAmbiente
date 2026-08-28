@@ -18,6 +18,8 @@ python -m venv .venv
 
 Configura las variables descritas en `.env.example` en el entorno de ejecución. La aplicación usa PostgreSQL de forma predeterminada y no carga automáticamente archivos `.env`.
 
+`DIAS_POR_VENCER` define el umbral uniforme de la bandeja operativa; su valor predeterminado es 30 días y la propia bandeja muestra el valor activo.
+
 Inicializa la base y crea el primer Sysadmin:
 
 ```powershell
