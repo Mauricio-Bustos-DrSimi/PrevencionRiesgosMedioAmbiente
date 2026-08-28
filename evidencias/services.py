@@ -52,6 +52,35 @@ class CasoCumplimiento:
         return str(self.obligacion)
 
 
+@dataclass(frozen=True)
+class ResultadoIntegridad:
+    hash_registrado: str
+    hash_calculado: str | None
+    coincide: bool
+    error: str | None = None
+
+
+def verificar_integridad_archivo(evidencia: Evidencia) -> ResultadoIntegridad:
+    digest = hashlib.sha256()
+    try:
+        with evidencia.archivo.open("rb") as archivo:
+            for bloque in archivo.chunks():
+                digest.update(bloque)
+    except OSError:
+        return ResultadoIntegridad(
+            hash_registrado=evidencia.hash_sha256,
+            hash_calculado=None,
+            coincide=False,
+            error="No se pudo abrir el archivo almacenado para verificarlo.",
+        )
+    hash_calculado = digest.hexdigest()
+    return ResultadoIntegridad(
+        hash_registrado=evidencia.hash_sha256,
+        hash_calculado=hash_calculado,
+        coincide=hash_calculado == evidencia.hash_sha256,
+    )
+
+
 def cargar_evidencia(
     *,
     centro: CentroCosto,
@@ -92,6 +121,9 @@ def cargar_evidencia(
                 identificador=str(evidencia.pk),
                 descripcion=f"Cargó evidencia para {obligacion}.",
                 canal="web",
+                centro_costo=centro,
+                obligacion=obligacion,
+                evidencia=evidencia,
             )
     except Exception as exc:
         if evidencia is not None and evidencia.archivo.name:
@@ -128,6 +160,9 @@ def validar_evidencia(
                 "su correspondencia y sus fechas."
             ),
             canal="web",
+            centro_costo=evidencia.centro_costo,
+            obligacion=evidencia.obligacion,
+            evidencia=evidencia,
         )
     return validacion
 

@@ -25,6 +25,7 @@
       {% if puede_renovar %}
         <p><a href="{% url 'evidencias:cargar' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Cargar nueva evidencia</a></p>
       {% endif %}
+      <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Ver recorrido de trazabilidad</a></p>
       {% if validacion %}
         <p>Validada por {{ validacion.validada_por.username }} el {{ validacion.validada_en }}.</p>
       {% else %}

@@ -76,6 +76,7 @@ def crear(request: HttpRequest) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se registró {version.nombre}.",
                 canal="web",
+                obligacion=obligacion,
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(
@@ -138,6 +139,7 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se creó la versión {version.numero} de {version.nombre}.",
                 canal="web",
+                obligacion=obligacion,
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(
@@ -181,6 +183,7 @@ def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se cerró {version.nombre} el {version.fecha_cierre}.",
                 canal="web",
+                obligacion=obligacion,
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(

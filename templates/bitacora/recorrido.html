@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Recorrido de trazabilidad</title></head>
+  <body>
+    <main>
+      <h1>Recorrido de trazabilidad</h1>
+      <p>Centro de costo: {{ centro.codigo_contable }} — {{ centro.nombre }}</p>
+      <p>Obligación: {{ obligacion.version_actual.nombre }}</p>
+
+      <h2>Bitácora del dominio</h2>
+      <p>Los registros trazables no se editan ni se eliminan: las correcciones agregan actos o versiones.</p>
+      <p>El registro administrativo de Django no sustituye esta bitácora del dominio.</p>
+      <table>
+        <thead><tr><th>Qué ocurrió</th><th>Quién actuó</th><th>Cómo</th><th>Cuándo</th></tr></thead>
+        <tbody>
+          {% for evento in eventos %}
+            <tr>
+              <td>{{ evento.entidad }} — {{ evento.accion }} — {{ evento.descripcion }}</td>
+              <td>{{ evento.actor.username }}</td>
+              <td>{{ evento.canal }}</td>
+              <td>{{ evento.ocurrido_en }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="4">Sin actos registrados.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+
+      <h2>Obligación</h2>
+      <ol>
+        {% for version in obligacion.versiones.all %}
+          <li>Versión {{ version.numero }} — {{ version.nombre }} — {{ version.norma_origen }} — {{ version.autor.username }} — {{ version.motivo }}</li>
+        {% endfor %}
+      </ol>
+
+      <h2>Plan de aplicación</h2>
+      <ol>
+        {% for cambio in cambios %}
+          <li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>
+        {% empty %}<li>Sin cambios registrados.</li>{% endfor %}
+      </ol>
+
+      <h2>Evidencia y Validación</h2>
+      <ol>
+        {% for evidencia in evidencias %}
+          <li>
+            Evidencia {{ evidencia.pk }} — {{ evidencia.emisor }} — {{ evidencia.fecha_emision }} — cargada por {{ evidencia.cargada_por.username }}
+            {% if evidencia.validacion %}— Validación por {{ evidencia.validacion.validada_por.username }} el {{ evidencia.validacion.validada_en }}{% else %}— Pendiente de validación{% endif %}
+            — <a href="{% url 'evidencias:verificar_integridad' evidencia.pk %}">Verificar integridad</a>
+          </li>
+        {% empty %}<li>Sin evidencias registradas.</li>{% endfor %}
+      </ol>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Integridad del archivo</title></head>
+  <body>
+    <main>
+      <h1>Integridad del archivo</h1>
+      <p>Centro de costo: {{ evidencia.centro_costo }}</p>
+      <p>Obligación: {{ evidencia.nombre_obligacion }}</p>
+      <dl>
+        <dt>Hash SHA-256 registrado</dt>
+        <dd><code>{{ resultado.hash_registrado }}</code></dd>
+        <dt>Hash SHA-256 calculado</dt>
+        <dd>{% if resultado.hash_calculado %}<code>{{ resultado.hash_calculado }}</code>{% else %}No disponible{% endif %}</dd>
+        <dt>Resultado</dt>
+        <dd>
+          {% if resultado.error %}No se pudo verificar — {{ resultado.error }}
+          {% elif resultado.coincide %}Coincide — el archivo conserva su integridad.
+          {% else %}No coincide — Alteración detectada.
+          {% endif %}
+        </dd>
+      </dl>
+      <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Volver al recorrido de trazabilidad</a></p>
+    </main>
+  </body>
+</html>

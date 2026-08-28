@@ -24,6 +24,7 @@ from .services import (
     EstadoCumplimiento,
     estado_de_evidencia,
     validar_evidencia,
+    verificar_integridad_archivo,
 )
 
 Parametros = ParamSpec("Parametros")
@@ -188,4 +189,18 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             "historial": historial,
             "puede_renovar": cambio is not None and cambio.aplica,
         },
+    )
+
+
+@requiere_prevencionista
+def verificar_integridad(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
+    evidencia = get_object_or_404(
+        Evidencia.objects.select_related("centro_costo", "obligacion"),
+        pk=evidencia_pk,
+    )
+    resultado = verificar_integridad_archivo(evidencia)
+    return render(
+        request,
+        "evidencias/integridad.html",
+        {"evidencia": evidencia, "resultado": resultado},
     )

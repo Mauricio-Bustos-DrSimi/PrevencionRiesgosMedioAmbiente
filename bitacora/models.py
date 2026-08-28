@@ -5,6 +5,9 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from centros_costo.models import CentroCosto
+from obligaciones.models import Obligacion
+
 
 MENSAJE_INMUTABLE = "Los eventos de la bitácora no se pueden modificar ni eliminar."
 
@@ -31,6 +34,27 @@ class EventoBitacora(models.Model):
     descripcion = models.TextField("descripción")
     canal = models.CharField(max_length=100)
     ocurrido_en = models.DateTimeField(auto_now_add=True, db_index=True)
+    centro_costo = models.ForeignKey(
+        CentroCosto,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="eventos_bitacora",
+    )
+    obligacion = models.ForeignKey(
+        Obligacion,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="eventos_bitacora",
+    )
+    evidencia = models.ForeignKey(
+        "evidencias.Evidencia",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="eventos_bitacora",
+    )
 
     objects = EventoBitacoraQuerySet.as_manager()
 

@@ -66,7 +66,7 @@ def importar_centros(archivo: TextIO, actor: User) -> ResultadoImportacion:
             continue
         try:
             with transaction.atomic():
-                CentroCosto.objects.create(
+                centro = CentroCosto.objects.create(
                     codigo_contable=codigo,
                     nombre=fila["nombre"],
                     tipo=tipo,
@@ -80,6 +80,7 @@ def importar_centros(archivo: TextIO, actor: User) -> ResultadoImportacion:
                     identificador=codigo,
                     descripcion=f"Alta importada del centro {fila['nombre']}.",
                     canal="importación",
+                    centro_costo=centro,
                 )
         except IntegrityError:
             resultados.append(ResultadoFila(numero, "Duplicada", f"El código {codigo} ya existe."))
@@ -136,6 +137,7 @@ def importar_obligaciones(archivo: TextIO, actor: User) -> ResultadoImportacion:
                     identificador=str(obligacion.pk),
                     descripcion=f"Alta importada de {nombre}.",
                     canal="importación",
+                    obligacion=obligacion,
                 )
         except IntegrityError:
             resultados.append(ResultadoFila(numero, "Duplicada", f"La obligación {nombre} ya existe."))

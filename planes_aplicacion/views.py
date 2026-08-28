@@ -117,6 +117,7 @@ def confirmar_sugerencia(request: HttpRequest, centro_pk: int) -> HttpResponse:
                 identificador=str(centro.pk),
                 descripcion=f"Confirmó la sugerencia para {centro.nombre}.",
                 canal="web",
+                centro_costo=centro,
             )
         return redirect("planes_aplicacion:plan", centro_pk=centro.pk)
     return render(
@@ -151,6 +152,8 @@ def _cambiar(request: HttpRequest, centro_pk: int, *, aplica: bool) -> HttpRespo
                 identificador=str(centro.pk),
                 descripcion=f"Actualizó la aplicabilidad de {obligacion}.",
                 canal="web",
+                centro_costo=centro,
+                obligacion=obligacion,
             )
         return redirect("planes_aplicacion:plan", centro_pk=centro.pk)
     return render(

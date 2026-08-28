@@ -30,6 +30,7 @@
               {% if item.caso.evidencia %}
                 <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
               {% endif %}
+              <a href="{% url 'bitacora:recorrido' centro.pk item.obligacion.pk %}">Ver trazabilidad</a>
               {% if item.cambio and item.cambio.aplica and not fecha %}
                 <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
               {% endif %}

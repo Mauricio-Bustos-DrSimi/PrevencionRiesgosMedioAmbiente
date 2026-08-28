@@ -41,4 +41,5 @@ class CentroCostoAdmin(admin.ModelAdmin):
             identificador=obj.codigo_contable,
             descripcion=f"{accion} el centro de costo {obj.nombre}.",
             canal="Panel administrativo",
+            centro_costo=obj,
         )
