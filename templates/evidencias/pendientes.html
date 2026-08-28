@@ -8,7 +8,7 @@
         {% for evidencia in evidencias %}
           <li>
             <a href="{% url 'evidencias:validar' evidencia.pk %}">
-              {{ evidencia.centro_costo.nombre }} — {{ evidencia.obligacion.version_actual.nombre }}
+              {{ evidencia.centro_costo.nombre }} — {{ evidencia.nombre_obligacion }}
             </a>
             — Pendiente de validación
           </li>

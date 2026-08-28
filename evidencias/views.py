@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion
@@ -18,7 +19,7 @@ from .services import (
     ErrorCargaEvidencia,
     ErrorValidacionEvidencia,
     cargar_evidencia,
-    estado_cumplimiento,
+    evidencia_esta_vigente,
     validar_evidencia,
 )
 
@@ -118,16 +119,17 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
             return redirect("evidencias:validar", evidencia_pk=evidencia.pk)
 
     validacion = getattr(evidencia, "validacion", None)
+    vigente = validacion is not None and evidencia_esta_vigente(
+        evidencia,
+        en_fecha=timezone.localdate(),
+    )
     return render(
         request,
         "evidencias/validar.html",
         {
             "evidencia": evidencia,
-            "estado_cumplimiento": estado_cumplimiento(
-                centro=evidencia.centro_costo,
-                obligacion=evidencia.obligacion,
-            ),
             "validacion": validacion,
+            "vigente": vigente,
             "error": error,
         },
     )

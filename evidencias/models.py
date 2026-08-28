@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from centros_costo.models import CentroCosto
-from obligaciones.models import Obligacion
+from obligaciones.models import Obligacion, Periodicidad
 
 
 MENSAJE_INMUTABLE = "Las evidencias no se pueden modificar ni eliminar."
@@ -16,7 +16,7 @@ class EstadoEvidencia(models.TextChoices):
     VALIDADA = "validada", "Validada"
 
 
-class EvidenciaQuerySet(models.QuerySet["Evidencia"]):
+class RegistroEvidenciaInmutableQuerySet(models.QuerySet[Any]):
     def update(self, **kwargs: Any) -> int:
         del kwargs
         raise ValidationError(MENSAJE_INMUTABLE)
@@ -30,7 +30,27 @@ def ruta_evidencia(instance: "Evidencia", nombre: str) -> str:
     return f"evidencias/{nombre}"
 
 
-class Evidencia(models.Model):
+class RegistroEvidenciaInmutable(models.Model):
+    objects = RegistroEvidenciaInmutableQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise ValidationError(MENSAJE_INMUTABLE)
+        super().save(*args, **kwargs)
+
+    def delete(
+        self,
+        using: str | None = None,
+        keep_parents: bool = False,
+    ) -> tuple[int, dict[str, int]]:
+        del using, keep_parents
+        raise ValidationError(MENSAJE_INMUTABLE)
+
+
+class Evidencia(RegistroEvidenciaInmutable):
     centro_costo = models.ForeignKey(
         CentroCosto,
         on_delete=models.PROTECT,
@@ -53,8 +73,6 @@ class Evidencia(models.Model):
     )
     cargada_en = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    objects = EvidenciaQuerySet.as_manager()
-
     class Meta:
         ordering = ("-cargada_en", "-pk")
         verbose_name = "evidencia"
@@ -66,21 +84,20 @@ class Evidencia(models.Model):
             return EstadoEvidencia.VALIDADA
         return EstadoEvidencia.PENDIENTE_VALIDACION
 
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self._state.adding:
-            raise ValidationError(MENSAJE_INMUTABLE)
-        super().save(*args, **kwargs)
+    @property
+    def nombre_obligacion(self) -> str:
+        return self.obligacion.version_actual.nombre
 
-    def delete(
-        self,
-        using: str | None = None,
-        keep_parents: bool = False,
-    ) -> tuple[int, dict[str, int]]:
-        del using, keep_parents
-        raise ValidationError(MENSAJE_INMUTABLE)
+    @property
+    def periodicidad(self) -> str:
+        return self.obligacion.version_actual.periodicidad
+
+    @property
+    def periodicidad_mostrada(self) -> str:
+        return Periodicidad(self.periodicidad).label
 
 
-class ValidacionEvidencia(models.Model):
+class ValidacionEvidencia(RegistroEvidenciaInmutable):
     evidencia = models.OneToOneField(
         Evidencia,
         on_delete=models.PROTECT,
@@ -93,22 +110,7 @@ class ValidacionEvidencia(models.Model):
     )
     validada_en = models.DateTimeField(auto_now_add=True, db_index=True)
 
-    objects = EvidenciaQuerySet.as_manager()
-
     class Meta:
         ordering = ("-validada_en", "-pk")
         verbose_name = "validación de evidencia"
         verbose_name_plural = "validaciones de evidencia"
-
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self._state.adding:
-            raise ValidationError(MENSAJE_INMUTABLE)
-        super().save(*args, **kwargs)
-
-    def delete(
-        self,
-        using: str | None = None,
-        keep_parents: bool = False,
-    ) -> tuple[int, dict[str, int]]:
-        del using, keep_parents
-        raise ValidationError(MENSAJE_INMUTABLE)

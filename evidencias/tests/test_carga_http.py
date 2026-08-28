@@ -64,7 +64,12 @@ class CargaEvidenciaHttpTests(TestCase):
             content_type="application/pdf",
         )
 
-    def _cargar_evidencia(self) -> Evidencia:
+    def _cargar_evidencia(
+        self,
+        *,
+        fecha_emision: str = "2026-08-01",
+        fecha_vencimiento: str = "2027-08-01",
+    ) -> Evidencia:
         respuesta = self.client.post(
             reverse(
                 "evidencias:cargar",
@@ -72,8 +77,8 @@ class CargaEvidenciaHttpTests(TestCase):
             ),
             {
                 "emisor": "Organismo certificador",
-                "fecha_emision": "2026-08-01",
-                "fecha_vencimiento": "2027-08-01",
+                "fecha_emision": fecha_emision,
+                "fecha_vencimiento": fecha_vencimiento,
                 "archivo": self._archivo(),
             },
         )
@@ -116,6 +121,12 @@ class CargaEvidenciaHttpTests(TestCase):
             tzinfo=ZoneInfo("America/Santiago"),
         )
 
+        pendiente = self.client.get(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+        self.assertContains(pendiente, "Pendiente de validación")
+        self.assertContains(pendiente, "No cumplida")
+
         with patch(
             "django.utils.timezone.localdate",
             return_value=date(2026, 8, 27),
@@ -153,6 +164,37 @@ class CargaEvidenciaHttpTests(TestCase):
             self.client.get("/admin/evidencias/evidencia/").status_code,
             404,
         )
+
+    def test_sysadmin_sin_rol_prevencionista_no_puede_validar(self) -> None:
+        evidencia = self._cargar_evidencia()
+        sysadmin = get_user_model().objects.create_superuser(
+            username="sysadmin_sin_rol_prevencionista",
+            password="clave-segura-de-prueba",
+        )
+        self.client.force_login(sysadmin)
+
+        respuesta = self.client.post(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+
+    def test_periodicidad_anual_limita_la_vigencia_a_un_ano(self) -> None:
+        evidencia = self._cargar_evidencia(
+            fecha_emision="2026-08-01",
+            fecha_vencimiento="2030-08-01",
+        )
+        with patch(
+            "django.utils.timezone.localdate",
+            return_value=date(2027, 8, 2),
+        ):
+            respuesta = self.client.post(
+                reverse("evidencias:validar", args=[evidencia.pk]),
+                follow=True,
+            )
+
+        self.assertNotContains(respuesta, "Vigente")
+        self.assertContains(respuesta, "Validada sin vigencia actual")
 
     def test_usuario_sin_rol_no_puede_validar_evidencia(self) -> None:
         evidencia = self._cargar_evidencia()

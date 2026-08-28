@@ -9,7 +9,7 @@
         <dt>Centro de costo</dt>
         <dd>{{ evidencia.centro_costo.nombre }}</dd>
         <dt>Obligación</dt>
-        <dd>{{ evidencia.obligacion.version_actual.nombre }}</dd>
+        <dd>{{ evidencia.nombre_obligacion }}</dd>
         <dt>Emisor</dt>
         <dd>{{ evidencia.emisor }}</dd>
         <dt>Fecha de emisión</dt>
@@ -17,9 +17,15 @@
         <dt>Fecha de vencimiento</dt>
         <dd>{{ evidencia.fecha_vencimiento }}</dd>
         <dt>Periodicidad</dt>
-        <dd>{{ evidencia.obligacion.version_actual.get_periodicidad_display }}</dd>
+        <dd>{{ evidencia.periodicidad_mostrada }}</dd>
         <dt>Estado de cumplimiento</dt>
-        <dd>{{ estado_cumplimiento }}{% if not validacion %} — No cumplida{% endif %}</dd>
+        {% if not validacion %}
+          <dd>Pendiente de validación — No cumplida</dd>
+        {% elif vigente %}
+          <dd>Vigente</dd>
+        {% else %}
+          <dd>Validada sin vigencia actual</dd>
+        {% endif %}
       </dl>
       {% if error %}<p role="alert">{{ error }}</p>{% endif %}
       {% if validacion %}
