@@ -168,11 +168,15 @@ def estado_de_evidencia(
     *,
     en_fecha: date,
 ) -> EstadoCumplimiento:
-    if en_fecha < evidencia.fecha_emision:
-        return EstadoCumplimiento.SIN_EVIDENCIA
+    estado_vigencia = estado_de_evidencia_validada(
+        evidencia,
+        en_fecha=en_fecha,
+    )
+    if estado_vigencia == EstadoCumplimiento.SIN_EVIDENCIA:
+        return estado_vigencia
     if getattr(evidencia, "validacion", None) is None:
         return EstadoCumplimiento.PENDIENTE_VALIDACION
-    return estado_de_evidencia_validada(evidencia, en_fecha=en_fecha)
+    return estado_vigencia
 
 
 def _evidencia_relevante(
@@ -180,51 +184,18 @@ def _evidencia_relevante(
     *,
     en_fecha: date,
 ) -> Evidencia | None:
-    activas: list[Evidencia] = []
-    pendientes: list[Evidencia] = []
-    vencidas: list[Evidencia] = []
-    futuras: list[Evidencia] = []
     for evidencia in evidencias:
-        estado = estado_de_evidencia(evidencia, en_fecha=en_fecha)
-        if estado in {EstadoCumplimiento.VIGENTE, EstadoCumplimiento.POR_VENCER}:
-            activas.append(evidencia)
-        elif estado == EstadoCumplimiento.PENDIENTE_VALIDACION:
-            pendientes.append(evidencia)
-        elif estado == EstadoCumplimiento.VENCIDO:
-            vencidas.append(evidencia)
-        else:
-            futuras.append(evidencia)
-
-    if activas:
-        return max(
-            activas,
-            key=lambda evidencia: (
-                evidencia.fecha_emision,
-                evidencia.cargada_en,
-                evidencia.pk,
-            ),
-        )
-    if pendientes:
-        return pendientes[0]
-    if vencidas:
-        return max(
-            vencidas,
-            key=lambda evidencia: (
-                fecha_fin_vigencia(evidencia),
-                evidencia.cargada_en,
-                evidencia.pk,
-            ),
-        )
-    if futuras:
-        return min(
-            futuras,
-            key=lambda evidencia: (
-                evidencia.fecha_emision,
-                evidencia.cargada_en,
-                evidencia.pk,
-            ),
-        )
-    return None
+        if evidencia.fecha_emision <= en_fecha:
+            return evidencia
+    return min(
+        evidencias,
+        key=lambda evidencia: (
+            evidencia.fecha_emision,
+            evidencia.cargada_en,
+            evidencia.pk,
+        ),
+        default=None,
+    )
 
 
 def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:

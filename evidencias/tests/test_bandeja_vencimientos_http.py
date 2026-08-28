@@ -84,6 +84,7 @@ class BandejaVencimientosHttpTests(TestCase):
         centro: CentroCosto | None = None,
         fecha_emision: str = "2026-01-01",
         fecha_vencimiento: str = "2026-12-31",
+        validar: bool = True,
     ) -> Evidencia:
         obligacion = obligacion or self.obligacion
         centro = centro or self.centro
@@ -108,7 +109,8 @@ class BandejaVencimientosHttpTests(TestCase):
             obligacion=obligacion,
         ).first()
         assert evidencia is not None
-        self.client.post(reverse("evidencias:validar", args=[evidencia.pk]))
+        if validar:
+            self.client.post(reverse("evidencias:validar", args=[evidencia.pk]))
         return evidencia
 
     def test_estado_cambia_con_el_tiempo_y_el_umbral_configurado(self) -> None:
@@ -290,4 +292,27 @@ class BandejaVencimientosHttpTests(TestCase):
         self.assertNotContains(
             bandeja,
             reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+    def test_evidencia_nueva_pendiente_supersede_a_la_vigente(self) -> None:
+        evidencia_vigente = self._cargar_y_validar()
+        evidencia_pendiente = self._cargar_y_validar(
+            fecha_emision="2026-08-20",
+            fecha_vencimiento="2027-08-20",
+            validar=False,
+        )
+
+        with patch("evidencias.views.timezone.localdate", return_value=date(2026, 8, 28)):
+            bandeja = self.client.get(
+                f"{reverse('evidencias:vencimientos')}?estado=pendiente_validacion"
+            )
+
+        self.assertContains(bandeja, "Pendiente de validación")
+        self.assertContains(
+            bandeja,
+            reverse("evidencias:validar", args=[evidencia_pendiente.pk]),
+        )
+        self.assertNotContains(
+            bandeja,
+            reverse("evidencias:validar", args=[evidencia_vigente.pk]),
         )

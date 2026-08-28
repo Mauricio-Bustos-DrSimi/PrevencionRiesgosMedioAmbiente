@@ -109,6 +109,7 @@ def vencimientos(request: HttpRequest) -> HttpResponse:
         "vencido": EstadoCumplimiento.VENCIDO,
         "por_vencer": EstadoCumplimiento.POR_VENCER,
         "sin_evidencia": EstadoCumplimiento.SIN_EVIDENCIA,
+        "pendiente_validacion": EstadoCumplimiento.PENDIENTE_VALIDACION,
     }
     estado_seleccionado = request.GET.get("estado", "")
     if estado_seleccionado in estados_por_filtro:
