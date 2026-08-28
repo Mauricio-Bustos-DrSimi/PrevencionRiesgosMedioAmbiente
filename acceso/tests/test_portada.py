@@ -101,12 +101,28 @@ class PortadaProtegidaTests(TestCase):
         self.assertContains(respuesta_bitacora, "Prevencionista")
         self.assertContains(respuesta_bitacora, "sysadmin")
         self.assertContains(respuesta_bitacora, "Panel administrativo")
+        nueva_clave = "otra-clave-segura-de-prueba"
+        respuesta_clave = self.client.post(
+            reverse("admin:auth_user_password_change", args=[usuario.pk]),
+            {
+                "usable_password": "true",
+                "password1": nueva_clave,
+                "password2": nueva_clave,
+            },
+        )
+        self.assertEqual(respuesta_clave.status_code, 302)
+        bitacora_clave = self.client.get(
+            reverse("admin:bitacora_eventobitacora_changelist"),
+        )
+        self.assertContains(bitacora_clave, 'class="field-accion">Cambi')
+        self.assertContains(bitacora_clave, "el valor secreto no se conserva")
+        self.assertNotContains(bitacora_clave, nueva_clave)
         self.client.logout()
         respuesta_login = self.client.post(
             "/cuentas/iniciar-sesion/",
             {
                 "username": "cuenta_piloto",
-                "password": "clave-segura-de-prueba",
+                "password": nueva_clave,
             },
         )
         respuesta_portada = self.client.get("/")
