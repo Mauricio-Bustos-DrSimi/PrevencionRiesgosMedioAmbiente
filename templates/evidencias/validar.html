@@ -18,13 +18,8 @@
         <dd>{{ evidencia.fecha_vencimiento }}</dd>
         <dt>Periodicidad</dt>
         <dd>{{ evidencia.periodicidad_mostrada }}</dd>
-        {% if not validacion %}
-          <dt>Estado de cumplimiento</dt>
-          <dd>Pendiente de validación — No cumplida</dd>
-        {% else %}
-          <dt>Estado de cumplimiento</dt>
-          <dd>{{ estado }}</dd>
-        {% endif %}
+        <dt>Estado de cumplimiento</dt>
+        <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
       </dl>
       {% if error %}<p role="alert">{{ error }}</p>{% endif %}
       {% if validacion %}

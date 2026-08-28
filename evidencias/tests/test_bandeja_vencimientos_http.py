@@ -244,10 +244,14 @@ class BandejaVencimientosHttpTests(TestCase):
         evidencia_actual = self._cargar_y_validar(
             fecha_vencimiento="2026-09-10",
         )
-        evidencia_futura = self._cargar_y_validar(
-            fecha_emision="2027-01-01",
-            fecha_vencimiento="2027-12-31",
-        )
+        with patch(
+            "django.utils.timezone.localdate",
+            return_value=date(2027, 1, 2),
+        ):
+            evidencia_futura = self._cargar_y_validar(
+                fecha_emision="2027-01-01",
+                fecha_vencimiento="2027-12-31",
+            )
         url = reverse("evidencias:vencimientos")
 
         with patch("evidencias.views.timezone.localdate", return_value=date(2026, 8, 28)):
@@ -267,3 +271,23 @@ class BandejaVencimientosHttpTests(TestCase):
         )
         self.assertContains(detalle_futuro, "Sin evidencia")
         self.assertNotContains(detalle_futuro, ">Vigente<")
+
+    def test_obligacion_cerrada_no_permanece_en_la_bandeja_operativa(self) -> None:
+        evidencia = self._cargar_y_validar()
+        self.client.post(
+            reverse("obligaciones:cerrar", args=[self.obligacion.pk]),
+            {
+                "fecha_cierre": "2026-12-31",
+                "motivo": "La exigencia normativa dejó de regir",
+            },
+        )
+
+        with patch("evidencias.views.timezone.localdate", return_value=date(2027, 1, 1)):
+            bandeja = self.client.get(
+                f"{reverse('evidencias:vencimientos')}?estado=vencido"
+            )
+
+        self.assertNotContains(
+            bandeja,
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )

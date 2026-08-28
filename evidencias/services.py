@@ -238,7 +238,7 @@ def casos_de_cumplimiento(*, en_fecha: date) -> list[CasoCumplimiento]:
 
     casos: list[CasoCumplimiento] = []
     for cambio in cambios_actuales.values():
-        if not cambio.aplica:
+        if not cambio.aplica or not cambio.obligacion.esta_vigente:
             continue
         evidencias = list(
             Evidencia.objects.filter(

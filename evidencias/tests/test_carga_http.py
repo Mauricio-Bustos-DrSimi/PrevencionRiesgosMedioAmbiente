@@ -284,3 +284,25 @@ class CargaEvidenciaHttpTests(TestCase):
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "No se pudo almacenar la evidencia")
         self.assertNotContains(respuesta, "Pendiente de validación")
+
+    def test_fecha_de_emision_futura_se_rechaza(self) -> None:
+        with patch(
+            "django.utils.timezone.localdate",
+            return_value=date(2026, 8, 28),
+        ):
+            respuesta = self.client.post(
+                reverse(
+                    "evidencias:cargar",
+                    args=[self.centro.pk, self.obligacion.pk],
+                ),
+                {
+                    "emisor": "Organismo certificador",
+                    "fecha_emision": "2026-08-29",
+                    "fecha_vencimiento": "2027-08-29",
+                    "archivo": self._archivo(),
+                },
+            )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "La fecha de emisión no puede ser futura")
+        self.assertFalse(Evidencia.objects.exists())

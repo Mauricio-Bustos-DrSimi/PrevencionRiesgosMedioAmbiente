@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 
 
 class EvidenciaForm(forms.Form):
@@ -19,6 +20,11 @@ class EvidenciaForm(forms.Form):
             return {}
         emision = datos.get("fecha_emision")
         vencimiento = datos.get("fecha_vencimiento")
+        if emision and emision > timezone.localdate():
+            self.add_error(
+                "fecha_emision",
+                "La fecha de emisión no puede ser futura.",
+            )
         if emision and vencimiento and vencimiento <= emision:
             self.add_error(
                 "fecha_vencimiento",
