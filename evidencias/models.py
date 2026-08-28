@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 
 from centros_costo.models import CentroCosto
-from obligaciones.models import Obligacion, Periodicidad
+from obligaciones.models import Obligacion, Periodicidad, VersionObligacion
 
 
 MENSAJE_INMUTABLE = "Las evidencias no se pueden modificar ni eliminar."
@@ -61,6 +61,11 @@ class Evidencia(RegistroEvidenciaInmutable):
         on_delete=models.PROTECT,
         related_name="evidencias",
     )
+    version_obligacion = models.ForeignKey(
+        VersionObligacion,
+        on_delete=models.PROTECT,
+        related_name="evidencias",
+    )
     archivo = models.FileField(upload_to=ruta_evidencia)
     hash_sha256 = models.CharField(max_length=64)
     emisor = models.CharField(max_length=255)
@@ -79,22 +84,22 @@ class Evidencia(RegistroEvidenciaInmutable):
         verbose_name_plural = "evidencias"
 
     @property
-    def estado(self) -> EstadoEvidencia:
+    def estado_validacion(self) -> EstadoEvidencia:
         if ValidacionEvidencia.objects.filter(evidencia=self).exists():
             return EstadoEvidencia.VALIDADA
         return EstadoEvidencia.PENDIENTE_VALIDACION
 
     @property
     def nombre_obligacion(self) -> str:
-        return self.obligacion.version_actual.nombre
+        return self.version_obligacion.nombre
 
     @property
-    def periodicidad(self) -> str:
-        return self.obligacion.version_actual.periodicidad
+    def periodicidad(self) -> Periodicidad:
+        return Periodicidad(self.version_obligacion.periodicidad)
 
     @property
     def periodicidad_mostrada(self) -> str:
-        return Periodicidad(self.periodicidad).label
+        return self.periodicidad.label
 
 
 class ValidacionEvidencia(RegistroEvidenciaInmutable):

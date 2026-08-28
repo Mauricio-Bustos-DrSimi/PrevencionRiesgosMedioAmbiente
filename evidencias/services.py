@@ -46,6 +46,7 @@ def cargar_evidencia(
             evidencia = Evidencia(
                 centro_costo=centro,
                 obligacion=obligacion,
+                version_obligacion=obligacion.version_actual,
                 hash_sha256=digest.hexdigest(),
                 emisor=emisor,
                 fecha_emision=fecha_emision,
@@ -78,7 +79,7 @@ def validar_evidencia(
 ) -> ValidacionEvidencia:
     if not actor.groups.filter(name="Prevencionista").exists():
         raise PermissionDenied("Solo un Prevencionista puede validar evidencia.")
-    if evidencia.estado == EstadoEvidencia.VALIDADA:
+    if evidencia.estado_validacion == EstadoEvidencia.VALIDADA:
         raise ErrorValidacionEvidencia("La evidencia ya fue validada.")
 
     with transaction.atomic():
@@ -108,7 +109,7 @@ def _sumar_anos(fecha: date, anos: int) -> date:
 
 
 def fecha_fin_vigencia(evidencia: Evidencia) -> date:
-    periodicidad = Periodicidad(evidencia.periodicidad)
+    periodicidad = evidencia.periodicidad
     if periodicidad == Periodicidad.PERMANENTE:
         return date.max
     if periodicidad == Periodicidad.ANUAL:

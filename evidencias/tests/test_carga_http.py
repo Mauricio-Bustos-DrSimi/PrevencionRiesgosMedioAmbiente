@@ -184,6 +184,17 @@ class CargaEvidenciaHttpTests(TestCase):
             fecha_emision="2026-08-01",
             fecha_vencimiento="2030-08-01",
         )
+        VersionObligacion.objects.create(
+            obligacion=self.obligacion,
+            numero=2,
+            nombre="Mantener extintores sin renovación periódica",
+            norma_origen="DS 594 corregido",
+            titular="centro_costo",
+            periodicidad="permanente",
+            tipo_version=TipoVersion.CORRECCION,
+            autor=self.usuario,
+            motivo="Cambio posterior a la carga",
+        )
         with patch(
             "django.utils.timezone.localdate",
             return_value=date(2027, 8, 2),
