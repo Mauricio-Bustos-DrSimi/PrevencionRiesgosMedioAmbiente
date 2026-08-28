@@ -12,6 +12,7 @@ class EventoBitacoraAdmin(admin.ModelAdmin):
         "accion",
         "entidad",
         "identificador",
+        "descripcion",
         "canal",
     )
     list_filter = ("accion", "entidad", "canal")

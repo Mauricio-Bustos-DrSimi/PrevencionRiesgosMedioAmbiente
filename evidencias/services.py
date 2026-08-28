@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 from django.utils import timezone
 
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, Periodicidad, VersionObligacion
 from planes_aplicacion.models import CambioAplicabilidad
@@ -121,9 +121,7 @@ def cargar_evidencia(
                 identificador=str(evidencia.pk),
                 descripcion=f"Cargó evidencia para {obligacion}.",
                 canal="web",
-                centro_costo=centro,
-                obligacion=obligacion,
-                evidencia=evidencia,
+                contexto=ContextoBitacora.para_evidencia(evidencia),
             )
     except Exception as exc:
         if evidencia is not None and evidencia.archivo.name:
@@ -160,9 +158,7 @@ def validar_evidencia(
                 "su correspondencia y sus fechas."
             ),
             canal="web",
-            centro_costo=evidencia.centro_costo,
-            obligacion=evidencia.obligacion,
-            evidencia=evidencia,
+            contexto=ContextoBitacora.para_evidencia(evidencia),
         )
     return validacion
 

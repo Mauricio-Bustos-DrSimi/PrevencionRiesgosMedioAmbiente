@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib.auth.models import User
 from django.http import HttpRequest
 
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 
 from .models import CambioAplicabilidad
 
@@ -60,6 +60,8 @@ class CambioAplicabilidadAdmin(admin.ModelAdmin):
             identificador=str(obj.centro_costo_id),
             descripcion=f"Actualizó la aplicabilidad de {obj.obligacion}.",
             canal="Panel administrativo",
-            centro_costo=obj.centro_costo,
-            obligacion=obj.obligacion,
+            contexto=ContextoBitacora.para_plan(
+                obj.centro_costo,
+                obj.obligacion,
+            ),
         )

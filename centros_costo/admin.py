@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.http import HttpRequest
 
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 
 from .models import CentroCosto
 
@@ -63,5 +63,5 @@ class CentroCostoAdmin(admin.ModelAdmin):
             identificador=obj.codigo_contable,
             descripcion=descripcion,
             canal="Panel administrativo",
-            centro_costo=obj,
+            contexto=ContextoBitacora.para_centro(obj),
         )

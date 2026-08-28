@@ -52,20 +52,21 @@ class TrazabilidadHttpTests(TestCase):
         self.assertEqual(alta_centro.status_code, 302)
         centro = CentroCosto.objects.get(codigo_contable="FAR-TRAZ-001")
 
-        self.client.force_login(self.prevencionista)
         alta_obligacion = self.client.post(
-            reverse("obligaciones:crear"),
+            reverse("admin:obligaciones_obligacion_add"),
             {
                 "nombre": "Mantener extintores certificados",
                 "norma_origen": "DS 594, artículo 45",
                 "titular": "centro_costo",
                 "periodicidad": "anual",
                 "motivo": "Alta del recorrido fiscalizable",
+                "_save": "Guardar",
             },
         )
         self.assertEqual(alta_obligacion.status_code, 302)
         obligacion = Obligacion.objects.get()
 
+        self.client.force_login(self.prevencionista)
         aplicacion = self.client.post(
             reverse("planes_aplicacion:agregar", args=[centro.pk]),
             {

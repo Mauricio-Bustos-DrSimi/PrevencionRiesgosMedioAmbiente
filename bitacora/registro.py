@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser, User
@@ -10,6 +11,41 @@ if TYPE_CHECKING:
     from obligaciones.models import Obligacion
 
 
+@dataclass(frozen=True)
+class ContextoBitacora:
+    centro_costo: "CentroCosto | None" = None
+    obligacion: "Obligacion | None" = None
+    evidencia: "Evidencia | None" = None
+
+    @classmethod
+    def general(cls) -> "ContextoBitacora":
+        return cls()
+
+    @classmethod
+    def para_centro(cls, centro: "CentroCosto") -> "ContextoBitacora":
+        return cls(centro_costo=centro)
+
+    @classmethod
+    def para_obligacion(cls, obligacion: "Obligacion") -> "ContextoBitacora":
+        return cls(obligacion=obligacion)
+
+    @classmethod
+    def para_plan(
+        cls,
+        centro: "CentroCosto",
+        obligacion: "Obligacion | None" = None,
+    ) -> "ContextoBitacora":
+        return cls(centro_costo=centro, obligacion=obligacion)
+
+    @classmethod
+    def para_evidencia(cls, evidencia: "Evidencia") -> "ContextoBitacora":
+        return cls(
+            centro_costo=evidencia.centro_costo,
+            obligacion=evidencia.obligacion,
+            evidencia=evidencia,
+        )
+
+
 def registrar_evento(
     *,
     actor: AbstractBaseUser | AnonymousUser,
@@ -18,9 +54,7 @@ def registrar_evento(
     identificador: str,
     descripcion: str,
     canal: str,
-    centro_costo: "CentroCosto | None" = None,
-    obligacion: "Obligacion | None" = None,
-    evidencia: "Evidencia | None" = None,
+    contexto: ContextoBitacora,
 ) -> EventoBitacora:
     """Agrega un acto trazable a la bitácora inmutable del dominio."""
     if not actor.is_authenticated:
@@ -33,7 +67,7 @@ def registrar_evento(
         identificador=identificador,
         descripcion=descripcion,
         canal=canal,
-        centro_costo=centro_costo,
-        obligacion=obligacion,
-        evidencia=evidencia,
+        centro_costo=contexto.centro_costo,
+        obligacion=contexto.obligacion,
+        evidencia=contexto.evidencia,
     )

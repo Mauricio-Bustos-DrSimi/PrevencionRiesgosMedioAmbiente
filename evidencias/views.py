@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from acceso.permisos import requiere_operador_mvp
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion
 from planes_aplicacion.services import estado_actual
@@ -187,9 +187,7 @@ def verificar_integridad(request: HttpRequest, evidencia_pk: int) -> HttpRespons
         identificador=str(evidencia.pk),
         descripcion=descripcion,
         canal="web",
-        centro_costo=evidencia.centro_costo,
-        obligacion=evidencia.obligacion,
-        evidencia=evidencia,
+        contexto=ContextoBitacora.para_evidencia(evidencia),
     )
     return render(
         request,

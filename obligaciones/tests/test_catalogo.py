@@ -157,7 +157,9 @@ class CatalogoObligacionesTests(TestCase):
         self.assertContains(respuesta_bitacora, "cierre")
         self.assertContains(respuesta_bitacora, "obligación")
         self.assertContains(respuesta_bitacora, "web")
-        self.assertEqual(
-            self.client.get("/admin/obligaciones/obligacion/").status_code,
-            404,
+        respuesta_admin = self.client.get("/admin/obligaciones/obligacion/")
+        self.assertEqual(respuesta_admin.status_code, 200)
+        self.assertContains(
+            respuesta_admin,
+            reverse("admin:obligaciones_obligacion_add"),
         )

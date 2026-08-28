@@ -7,7 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from acceso.permisos import requiere_operador_mvp
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 from obligaciones.forms import FormularioCierre, FormularioObligacion
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
 
@@ -52,7 +52,7 @@ def crear(request: HttpRequest) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se registró {version.nombre}.",
                 canal="web",
-                obligacion=obligacion,
+                contexto=ContextoBitacora.para_obligacion(obligacion),
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(
@@ -115,7 +115,7 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se creó la versión {version.numero} de {version.nombre}.",
                 canal="web",
-                obligacion=obligacion,
+                contexto=ContextoBitacora.para_obligacion(obligacion),
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(
@@ -159,7 +159,7 @@ def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
                 identificador=str(obligacion.pk),
                 descripcion=f"Se cerró {version.nombre} el {version.fecha_cierre}.",
                 canal="web",
-                obligacion=obligacion,
+                contexto=ContextoBitacora.para_obligacion(obligacion),
             )
         return redirect("obligaciones:detalle", pk=obligacion.pk)
     return render(

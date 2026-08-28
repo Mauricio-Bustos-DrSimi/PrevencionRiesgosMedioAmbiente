@@ -93,6 +93,14 @@ class PortadaProtegidaTests(TestCase):
                 "_save": "Guardar",
             },
         )
+        respuesta_bitacora = self.client.get(
+            reverse("admin:bitacora_eventobitacora_changelist"),
+        )
+        self.assertContains(respuesta_bitacora, "Cuenta local")
+        self.assertContains(respuesta_bitacora, "cuenta_piloto")
+        self.assertContains(respuesta_bitacora, "Prevencionista")
+        self.assertContains(respuesta_bitacora, "sysadmin")
+        self.assertContains(respuesta_bitacora, "Panel administrativo")
         self.client.logout()
         respuesta_login = self.client.post(
             "/cuentas/iniciar-sesion/",

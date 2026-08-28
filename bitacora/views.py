@@ -25,7 +25,11 @@ def recorrido(
     evidencias = Evidencia.objects.filter(
         centro_costo=centro,
         obligacion=obligacion,
-    ).select_related("cargada_por", "validacion__validada_por", "version_obligacion")
+    ).select_related(
+        "cargada_por",
+        "validacion__validada_por",
+        "version_obligacion",
+    )
     identificadores_evidencia = evidencias.values_list("pk", flat=True)
     eventos = (
         EventoBitacora.objects.filter(
@@ -52,13 +56,6 @@ def recorrido(
                 evidencia__isnull=True,
                 entidad__iexact="Evidencia",
                 identificador__in=identificadores_evidencia,
-            )
-            | Q(
-                centro_costo__isnull=True,
-                obligacion__isnull=True,
-                evidencia__isnull=True,
-                entidad__iexact="plan de aplicación",
-                identificador=str(centro.pk),
             )
         )
         .select_related("actor")

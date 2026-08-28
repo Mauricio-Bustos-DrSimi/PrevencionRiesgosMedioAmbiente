@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from acceso.permisos import requiere_operador_mvp
-from bitacora.registro import registrar_evento
+from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from evidencias.services import caso_de_cumplimiento
 from .forms import CambioAplicabilidadForm, MotivoAplicabilidadForm
@@ -90,7 +90,7 @@ def confirmar_sugerencia(request: HttpRequest, centro_pk: int) -> HttpResponse:
                 identificador=str(centro.pk),
                 descripcion=f"Confirmó la sugerencia para {centro.nombre}.",
                 canal="web",
-                centro_costo=centro,
+                contexto=ContextoBitacora.para_plan(centro),
             )
         return redirect("planes_aplicacion:plan", centro_pk=centro.pk)
     return render(
@@ -125,8 +125,7 @@ def _cambiar(request: HttpRequest, centro_pk: int, *, aplica: bool) -> HttpRespo
                 identificador=str(centro.pk),
                 descripcion=f"Actualizó la aplicabilidad de {obligacion}.",
                 canal="web",
-                centro_costo=centro,
-                obligacion=obligacion,
+                contexto=ContextoBitacora.para_plan(centro, obligacion),
             )
         return redirect("planes_aplicacion:plan", centro_pk=centro.pk)
     return render(
