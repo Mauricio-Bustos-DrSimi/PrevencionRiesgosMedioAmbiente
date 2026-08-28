@@ -13,6 +13,7 @@ from bitacora.models import EventoBitacora
 from centros_costo.models import CentroCosto
 from evidencias.models import Evidencia
 from obligaciones.models import Obligacion
+from planes_aplicacion.models import CambioAplicabilidad
 
 
 CLAVE_PRUEBA = "clave-segura-de-prueba"
@@ -118,6 +119,18 @@ class TrazabilidadHttpTests(TestCase):
         )
         self.assertEqual(cambio_centro.status_code, 302)
         centro.refresh_from_db()
+
+        cambio_plan_admin = self.client.post(
+            reverse("admin:planes_aplicacion_cambioaplicabilidad_add"),
+            {
+                "centro_costo": str(centro.pk),
+                "obligacion": str(obligacion.pk),
+                "aplica": "on",
+                "motivo": "Confirmación equivalente desde el panel administrativo",
+                "_save": "Guardar",
+            },
+        )
+        self.assertEqual(cambio_plan_admin.status_code, 302)
         return centro, obligacion, evidencia
 
     def test_fiscalizador_consulta_el_recorrido_completo_de_ambos_canales(
@@ -161,6 +174,12 @@ class TrazabilidadHttpTests(TestCase):
         self.assertContains(respuesta, "cargar_evidencia")
         self.assertContains(respuesta, "validar_evidencia")
         self.assertContains(respuesta, "corrección")
+        self.assertContains(
+            respuesta,
+            "Confirmación equivalente desde el panel administrativo",
+        )
+        self.assertContains(respuesta, "Datos anteriores")
+        self.assertContains(respuesta, "Datos nuevos")
 
         url_recorrido = reverse(
             "bitacora:recorrido",
@@ -209,11 +228,42 @@ class TrazabilidadHttpTests(TestCase):
         self.assertContains(verificacion_alterada, "No coincide")
         self.assertContains(verificacion_alterada, "Alteración detectada")
         self.assertContains(verificacion_alterada, evidencia.hash_sha256)
+        recorrido_actualizado = self.client.get(url_recorrido)
+        self.assertContains(recorrido_actualizado, "verificar_integridad", count=2)
+        self.assertContains(recorrido_actualizado, "Coincidió")
+        self.assertContains(recorrido_actualizado, "No coincidió")
+
+    def test_incluye_eventos_anteriores_a_las_relaciones_del_recorrido(self) -> None:
+        centro, obligacion, evidencia = self._crear_recorrido()
+        EventoBitacora.objects.create(
+            actor=self.prevencionista,
+            accion="acto_historico",
+            entidad="Evidencia",
+            identificador=str(evidencia.pk),
+            descripcion="Acto previo a las relaciones explícitas de trazabilidad.",
+            canal="web",
+        )
+        self.client.force_login(self.prevencionista)
+
+        recorrido = self.client.get(
+            reverse("bitacora:recorrido", args=[centro.pk, obligacion.pk]),
+        )
+
+        self.assertContains(recorrido, "acto_historico")
+        self.assertContains(
+            recorrido,
+            "Acto previo a las relaciones explícitas de trazabilidad",
+        )
 
     def test_los_registros_trazables_no_ofrecen_eliminacion(self) -> None:
         centro, obligacion, evidencia = self._crear_recorrido()
         evento = EventoBitacora.objects.filter(evidencia=evidencia).first()
         assert evento is not None
+        cambio = CambioAplicabilidad.objects.filter(
+            centro_costo=centro,
+            obligacion=obligacion,
+        ).first()
+        assert cambio is not None
         self.client.force_login(self.sysadmin)
 
         respuestas = (
@@ -226,6 +276,24 @@ class TrazabilidadHttpTests(TestCase):
             self.client.get(
                 reverse("admin:bitacora_eventobitacora_delete", args=[evento.pk]),
             ),
+            self.client.post(
+                reverse(
+                    "admin:planes_aplicacion_cambioaplicabilidad_change",
+                    args=[cambio.pk],
+                ),
+                {
+                    "centro_costo": str(centro.pk),
+                    "obligacion": str(obligacion.pk),
+                    "motivo": "Intento de sobrescritura",
+                    "_save": "Guardar",
+                },
+            ),
+            self.client.get(
+                reverse(
+                    "admin:planes_aplicacion_cambioaplicabilidad_delete",
+                    args=[cambio.pk],
+                ),
+            ),
             self.client.post(f"/obligaciones/{obligacion.pk}/eliminar/"),
             self.client.post(f"/planes-aplicacion/{centro.pk}/eliminar/"),
             self.client.post(f"/evidencias/{evidencia.pk}/eliminar/"),
@@ -233,7 +301,7 @@ class TrazabilidadHttpTests(TestCase):
 
         self.assertEqual(
             [respuesta.status_code for respuesta in respuestas],
-            [403, 403, 404, 404, 404],
+            [403, 403, 403, 403, 404, 404, 404],
         )
         recorrido = self.client.get(
             reverse("bitacora:recorrido", args=[centro.pk, obligacion.pk]),

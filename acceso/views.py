@@ -1,19 +1,15 @@
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
+from .permisos import es_operador_mvp
 
-GRUPO_PREVENCIONISTA = "Prevencionista"
-
-
-@login_required
 def inicio(request: HttpRequest) -> HttpResponse:
-    usuario = request.user
-    if not (
-        usuario.is_superuser
-        or usuario.groups.filter(name=GRUPO_PREVENCIONISTA).exists()
-    ):
+    if not request.user.is_authenticated:
+        from django.contrib.auth.views import redirect_to_login
+
+        return redirect_to_login(request.get_full_path())
+    if not es_operador_mvp(request.user):
         raise PermissionDenied
 
     return render(request, "acceso/inicio.html")

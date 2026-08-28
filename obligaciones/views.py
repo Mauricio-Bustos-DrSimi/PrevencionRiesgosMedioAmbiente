@@ -1,42 +1,18 @@
-from collections.abc import Callable
-from functools import wraps
-from typing import ParamSpec, TypeVar, cast
+from typing import cast
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from acceso.permisos import requiere_operador_mvp
 from bitacora.registro import registrar_evento
 from obligaciones.forms import FormularioCierre, FormularioObligacion
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
 
 
-Parametros = ParamSpec("Parametros")
-Respuesta = TypeVar("Respuesta", bound=HttpResponse)
-
-
-def requiere_operador(
-    vista: Callable[Parametros, Respuesta],
-) -> Callable[Parametros, Respuesta]:
-    @login_required
-    @wraps(vista)
-    def protegida(*args: Parametros.args, **kwargs: Parametros.kwargs) -> Respuesta:
-        request = cast(HttpRequest, args[0])
-        usuario = request.user
-        if not (
-            usuario.is_superuser
-            or usuario.groups.filter(name="Prevencionista").exists()
-        ):
-            raise PermissionDenied
-        return vista(*args, **kwargs)
-
-    return protegida
-
-
-@requiere_operador
+@requiere_operador_mvp
 def catalogo(request: HttpRequest) -> HttpResponse:
     obligaciones_vigentes = [
         obligacion
@@ -50,7 +26,7 @@ def catalogo(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_operador
+@requiere_operador_mvp
 def crear(request: HttpRequest) -> HttpResponse:
     formulario = FormularioObligacion(request.POST or None)
     if request.method == "POST" and formulario.is_valid():
@@ -86,7 +62,7 @@ def crear(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_operador
+@requiere_operador_mvp
 def detalle(request: HttpRequest, pk: int) -> HttpResponse:
     obligacion = get_object_or_404(
         Obligacion.objects.prefetch_related("versiones__autor"),
@@ -99,7 +75,7 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador
+@requiere_operador_mvp
 def corregir(request: HttpRequest, pk: int) -> HttpResponse:
     obligacion = get_object_or_404(Obligacion, pk=pk)
     actual = obligacion.version_actual
@@ -149,7 +125,7 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador
+@requiere_operador_mvp
 def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
     obligacion = get_object_or_404(Obligacion, pk=pk)
     actual = obligacion.version_actual

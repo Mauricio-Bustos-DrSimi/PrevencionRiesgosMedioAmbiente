@@ -1,15 +1,13 @@
-from collections.abc import Callable
-from functools import wraps
-from typing import ParamSpec, TypeVar, cast
+from typing import cast
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from acceso.permisos import requiere_operador_mvp
+from bitacora.registro import registrar_evento
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion
 from planes_aplicacion.services import estado_actual
@@ -27,31 +25,8 @@ from .services import (
     verificar_integridad_archivo,
 )
 
-Parametros = ParamSpec("Parametros")
-Respuesta = TypeVar("Respuesta", bound=HttpResponse)
 
-
-def requiere_prevencionista(
-    vista: Callable[Parametros, Respuesta],
-) -> Callable[Parametros, Respuesta]:
-    @login_required
-    @wraps(vista)
-    def protegida(
-        *args: Parametros.args,
-        **kwargs: Parametros.kwargs,
-    ) -> Respuesta:
-        request = cast(HttpRequest, args[0])
-        if not (
-            request.user.is_superuser
-            or request.user.groups.filter(name="Prevencionista").exists()
-        ):
-            raise PermissionDenied
-        return vista(*args, **kwargs)
-
-    return protegida
-
-
-@requiere_prevencionista
+@requiere_operador_mvp
 def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResponse:
     centro = get_object_or_404(CentroCosto, pk=centro_pk, es_franquicia=False)
     obligacion = get_object_or_404(Obligacion, pk=obligacion_pk)
@@ -92,7 +67,7 @@ def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResp
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def pendientes(request: HttpRequest) -> HttpResponse:
     evidencias = Evidencia.objects.filter(
         validacion__isnull=True,
@@ -104,7 +79,7 @@ def pendientes(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def vencimientos(request: HttpRequest) -> HttpResponse:
     estados_por_filtro = {
         "vencido": EstadoCumplimiento.VENCIDO,
@@ -150,7 +125,7 @@ def vencimientos(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     evidencia = get_object_or_404(
         Evidencia.objects.select_related("centro_costo", "obligacion"),
@@ -192,13 +167,30 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def verificar_integridad(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     evidencia = get_object_or_404(
         Evidencia.objects.select_related("centro_costo", "obligacion"),
         pk=evidencia_pk,
     )
     resultado = verificar_integridad_archivo(evidencia)
+    if resultado.error:
+        descripcion = resultado.error
+    elif resultado.coincide:
+        descripcion = "Coincidió con el hash SHA-256 registrado."
+    else:
+        descripcion = "No coincidió con el hash SHA-256 registrado."
+    registrar_evento(
+        actor=request.user,
+        accion="verificar_integridad",
+        entidad="Evidencia",
+        identificador=str(evidencia.pk),
+        descripcion=descripcion,
+        canal="web",
+        centro_costo=evidencia.centro_costo,
+        obligacion=evidencia.obligacion,
+        evidencia=evidencia,
+    )
     return render(
         request,
         "evidencias/integridad.html",

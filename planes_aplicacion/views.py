@@ -1,16 +1,13 @@
 from datetime import date
-from collections.abc import Callable
-from functools import wraps
-from typing import ParamSpec, TypeVar, cast
+from typing import cast
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from acceso.permisos import requiere_operador_mvp
 from bitacora.registro import registrar_evento
 from centros_costo.models import CentroCosto
 from evidencias.services import caso_de_cumplimiento
@@ -19,35 +16,11 @@ from .models import CambioAplicabilidad
 from .services import cambios_del_plan, estado_actual, obligaciones_sugeridas
 
 
-Parametros = ParamSpec("Parametros")
-Respuesta = TypeVar("Respuesta", bound=HttpResponse)
-
-
-def requiere_prevencionista(
-    vista: Callable[Parametros, Respuesta],
-) -> Callable[Parametros, Respuesta]:
-    @login_required
-    @wraps(vista)
-    def protegida(
-        *args: Parametros.args,
-        **kwargs: Parametros.kwargs,
-    ) -> Respuesta:
-        request = cast(HttpRequest, args[0])
-        if not (
-            request.user.is_superuser
-            or request.user.groups.filter(name="Prevencionista").exists()
-        ):
-            raise PermissionDenied
-        return vista(*args, **kwargs)
-
-    return protegida
-
-
 def _centro(pk: int) -> CentroCosto:
     return get_object_or_404(CentroCosto, pk=pk, es_franquicia=False)
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
     centro = _centro(centro_pk)
     fecha_parametro = request.GET.get("fecha")
@@ -94,7 +67,7 @@ def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def confirmar_sugerencia(request: HttpRequest, centro_pk: int) -> HttpResponse:
     centro = _centro(centro_pk)
     formulario = MotivoAplicabilidadForm(request.POST or None)
@@ -167,11 +140,11 @@ def _cambiar(request: HttpRequest, centro_pk: int, *, aplica: bool) -> HttpRespo
     )
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def agregar(request: HttpRequest, centro_pk: int) -> HttpResponse:
     return _cambiar(request, centro_pk, aplica=True)
 
 
-@requiere_prevencionista
+@requiere_operador_mvp
 def no_aplica(request: HttpRequest, centro_pk: int) -> HttpResponse:
     return _cambiar(request, centro_pk, aplica=False)
