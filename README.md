@@ -37,7 +37,22 @@ Las pruebas locales usan SQLite en memoria mediante una opción explícita porqu
 ```powershell
 $env:DJANGO_TEST_USE_SQLITE='1'
 .\.venv\Scripts\python.exe manage.py test
-.\.venv\Scripts\python.exe -m mypy acceso configuracion manage.py
+.\.venv\Scripts\python.exe -m mypy acceso aceptacion bitacora centros_costo configuracion evidencias importaciones obligaciones planes_aplicacion manage.py
 ```
 
+Los paquetes se enumeran de forma explícita: `mypy .` recorrería también `docs/`,
+que contiene material que no es código.
+
 La configuración normal sigue apuntando a PostgreSQL. Las capacidades que dependan de comportamiento específico de PostgreSQL deben validarse contra ese motor.
+
+## Recorrido de aceptación del MVP
+
+`manage.py test aceptacion` ejecuta el recorrido de aceptación: la demostración
+reproducible del ciclo completo del piloto —configuración, carga, validación,
+vencimiento, renovación, reconstrucción histórica, bitácora e integridad
+SHA-256— a través de las interfaces HTTP.
+
+Exige PostgreSQL y **se omite** si la base configurada es otra, de modo que una
+ejecución sobre SQLite no puede confundirse con la demostración. Debe quedar
+verde antes de ampliar el piloto. El procedimiento está en
+[docs/recorrido-aceptacion-mvp.md](docs/recorrido-aceptacion-mvp.md).
