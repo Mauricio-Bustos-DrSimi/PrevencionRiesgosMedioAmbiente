@@ -46,11 +46,6 @@ class Evidencia(models.Model):
     emisor = models.CharField(max_length=255)
     fecha_emision = models.DateField()
     fecha_vencimiento = models.DateField()
-    estado = models.CharField(
-        max_length=30,
-        choices=EstadoEvidencia.choices,
-        default=EstadoEvidencia.PENDIENTE_VALIDACION,
-    )
     cargada_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -64,6 +59,46 @@ class Evidencia(models.Model):
         ordering = ("-cargada_en", "-pk")
         verbose_name = "evidencia"
         verbose_name_plural = "evidencias"
+
+    @property
+    def estado(self) -> EstadoEvidencia:
+        if ValidacionEvidencia.objects.filter(evidencia=self).exists():
+            return EstadoEvidencia.VALIDADA
+        return EstadoEvidencia.PENDIENTE_VALIDACION
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if not self._state.adding:
+            raise ValidationError(MENSAJE_INMUTABLE)
+        super().save(*args, **kwargs)
+
+    def delete(
+        self,
+        using: str | None = None,
+        keep_parents: bool = False,
+    ) -> tuple[int, dict[str, int]]:
+        del using, keep_parents
+        raise ValidationError(MENSAJE_INMUTABLE)
+
+
+class ValidacionEvidencia(models.Model):
+    evidencia = models.OneToOneField(
+        Evidencia,
+        on_delete=models.PROTECT,
+        related_name="validacion",
+    )
+    validada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="evidencias_validadas",
+    )
+    validada_en = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects = EvidenciaQuerySet.as_manager()
+
+    class Meta:
+        ordering = ("-validada_en", "-pk")
+        verbose_name = "validación de evidencia"
+        verbose_name_plural = "validaciones de evidencia"
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self._state.adding:

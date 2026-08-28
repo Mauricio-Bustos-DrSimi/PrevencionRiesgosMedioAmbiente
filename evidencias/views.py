@@ -6,14 +6,21 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion
 from planes_aplicacion.services import estado_actual
 
 from .forms import EvidenciaForm
-from .services import ErrorCargaEvidencia, cargar_evidencia
+from .models import Evidencia
+from .services import (
+    ErrorCargaEvidencia,
+    ErrorValidacionEvidencia,
+    cargar_evidencia,
+    estado_cumplimiento,
+    validar_evidencia,
+)
 
 Parametros = ParamSpec("Parametros")
 Respuesta = TypeVar("Respuesta", bound=HttpResponse)
@@ -77,4 +84,50 @@ def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResp
         request,
         "evidencias/formulario.html",
         {"formulario": formulario, "centro": centro, "obligacion": obligacion, "error": error},
+    )
+
+
+@requiere_prevencionista
+def pendientes(request: HttpRequest) -> HttpResponse:
+    evidencias = Evidencia.objects.filter(
+        validacion__isnull=True,
+    ).select_related("centro_costo", "obligacion")
+    return render(
+        request,
+        "evidencias/pendientes.html",
+        {"evidencias": evidencias},
+    )
+
+
+@requiere_prevencionista
+def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
+    evidencia = get_object_or_404(
+        Evidencia.objects.select_related("centro_costo", "obligacion"),
+        pk=evidencia_pk,
+    )
+    error = None
+    if request.method == "POST":
+        try:
+            validar_evidencia(
+                evidencia=evidencia,
+                actor=cast(User, request.user),
+            )
+        except ErrorValidacionEvidencia as exc:
+            error = str(exc)
+        else:
+            return redirect("evidencias:validar", evidencia_pk=evidencia.pk)
+
+    validacion = getattr(evidencia, "validacion", None)
+    return render(
+        request,
+        "evidencias/validar.html",
+        {
+            "evidencia": evidencia,
+            "estado_cumplimiento": estado_cumplimiento(
+                centro=evidencia.centro_costo,
+                obligacion=evidencia.obligacion,
+            ),
+            "validacion": validacion,
+            "error": error,
+        },
     )

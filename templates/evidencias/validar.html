@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Validar evidencia</title></head>
+  <body>
+    <main>
+      <p><a href="{% url 'evidencias:pendientes' %}">Volver a evidencias pendientes</a></p>
+      <h1>Validar evidencia</h1>
+      <dl>
+        <dt>Centro de costo</dt>
+        <dd>{{ evidencia.centro_costo.nombre }}</dd>
+        <dt>Obligación</dt>
+        <dd>{{ evidencia.obligacion.version_actual.nombre }}</dd>
+        <dt>Emisor</dt>
+        <dd>{{ evidencia.emisor }}</dd>
+        <dt>Fecha de emisión</dt>
+        <dd>{{ evidencia.fecha_emision }}</dd>
+        <dt>Fecha de vencimiento</dt>
+        <dd>{{ evidencia.fecha_vencimiento }}</dd>
+        <dt>Periodicidad</dt>
+        <dd>{{ evidencia.obligacion.version_actual.get_periodicidad_display }}</dd>
+        <dt>Estado de cumplimiento</dt>
+        <dd>{{ estado_cumplimiento }}{% if not validacion %} — No cumplida{% endif %}</dd>
+      </dl>
+      {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+      {% if validacion %}
+        <p>Validada por {{ validacion.validada_por.username }} el {{ validacion.validada_en }}.</p>
+      {% else %}
+        <form method="post">
+          {% csrf_token %}
+          <p>Confirmo que la evidencia corresponde a la obligación y que sus fechas son correctas.</p>
+          <button type="submit">Validar evidencia</button>
+        </form>
+      {% endif %}
+    </main>
+  </body>
+</html>

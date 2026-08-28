@@ -1,6 +1,8 @@
 import hashlib
 import tempfile
+from datetime import date, datetime
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -10,6 +12,8 @@ from django.urls import reverse
 
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
+
+from evidencias.models import Evidencia
 
 
 class CargaEvidenciaHttpTests(TestCase):
@@ -59,6 +63,115 @@ class CargaEvidenciaHttpTests(TestCase):
             contenido,
             content_type="application/pdf",
         )
+
+    def _cargar_evidencia(self) -> Evidencia:
+        respuesta = self.client.post(
+            reverse(
+                "evidencias:cargar",
+                args=[self.centro.pk, self.obligacion.pk],
+            ),
+            {
+                "emisor": "Organismo certificador",
+                "fecha_emision": "2026-08-01",
+                "fecha_vencimiento": "2027-08-01",
+                "archivo": self._archivo(),
+            },
+        )
+        self.assertEqual(respuesta.status_code, 200)
+        return Evidencia.objects.get()
+
+    def test_bandeja_abre_evidencia_pendiente_con_contexto(self) -> None:
+        evidencia = self._cargar_evidencia()
+
+        bandeja = self.client.get(reverse("evidencias:pendientes"))
+
+        self.assertEqual(bandeja.status_code, 200)
+        self.assertContains(bandeja, "Farmacia Evidencia")
+        self.assertContains(bandeja, "Mantener extintores certificados")
+        self.assertContains(bandeja, "Pendiente de validación")
+        self.assertContains(
+            bandeja,
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+        detalle = self.client.get(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+        self.assertEqual(detalle.status_code, 200)
+        self.assertContains(detalle, "Farmacia Evidencia")
+        self.assertContains(detalle, "Mantener extintores certificados")
+        self.assertContains(detalle, "Organismo certificador")
+        self.assertContains(detalle, "Pendiente de validación")
+        self.assertContains(detalle, "No cumplida")
+        self.assertContains(detalle, "Validar evidencia")
+
+    def test_validacion_deriva_vigente_y_registra_identidad_y_bitacora(self) -> None:
+        evidencia = self._cargar_evidencia()
+        momento_validacion = datetime(
+            2026,
+            8,
+            27,
+            12,
+            tzinfo=ZoneInfo("America/Santiago"),
+        )
+
+        with patch(
+            "django.utils.timezone.localdate",
+            return_value=date(2026, 8, 27),
+        ), patch(
+            "django.utils.timezone.now",
+            return_value=momento_validacion,
+        ):
+            respuesta = self.client.post(
+                reverse("evidencias:validar", args=[evidencia.pk]),
+                follow=True,
+            )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, "Vigente")
+        self.assertContains(respuesta, "Anual")
+        self.assertContains(respuesta, "prevencionista_evidencias")
+        self.assertContains(respuesta, "27 de agosto de 2026")
+        self.assertNotContains(respuesta, 'name="estado"')
+        self.assertNotContains(
+            self.client.get(reverse("evidencias:pendientes")),
+            "Farmacia Evidencia",
+        )
+
+        sysadmin = get_user_model().objects.create_superuser(
+            username="sysadmin_evidencias",
+            password="clave-segura-de-prueba",
+        )
+        self.client.force_login(sysadmin)
+        bitacora = self.client.get("/admin/bitacora/eventobitacora/")
+
+        self.assertContains(bitacora, "prevencionista_evidencias")
+        self.assertContains(bitacora, "validar_evidencia")
+        self.assertContains(bitacora, str(evidencia.pk))
+        self.assertEqual(
+            self.client.get("/admin/evidencias/evidencia/").status_code,
+            404,
+        )
+
+    def test_usuario_sin_rol_no_puede_validar_evidencia(self) -> None:
+        evidencia = self._cargar_evidencia()
+        usuario_sin_rol = get_user_model().objects.create_user(
+            username="sin_rol_evidencias",
+        )
+        self.client.force_login(usuario_sin_rol)
+
+        respuesta = self.client.post(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+        self.assertEqual(respuesta.status_code, 403)
+        self.client.force_login(self.usuario)
+        detalle = self.client.get(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+        self.assertContains(detalle, "Pendiente de validación")
+        self.assertContains(detalle, "No cumplida")
 
     def test_prevencionista_carga_evidencia_y_queda_pendiente_con_hash(self) -> None:
         contenido = b"certificado vigente de prueba"

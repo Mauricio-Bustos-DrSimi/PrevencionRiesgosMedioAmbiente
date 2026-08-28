@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Evidencias pendientes de validación</title></head>
+  <body>
+    <main>
+      <h1>Evidencias pendientes de validación</h1>
+      <ul>
+        {% for evidencia in evidencias %}
+          <li>
+            <a href="{% url 'evidencias:validar' evidencia.pk %}">
+              {{ evidencia.centro_costo.nombre }} — {{ evidencia.obligacion.version_actual.nombre }}
+            </a>
+            — Pendiente de validación
+          </li>
+        {% empty %}
+          <li>No hay evidencias pendientes de validación.</li>
+        {% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>
