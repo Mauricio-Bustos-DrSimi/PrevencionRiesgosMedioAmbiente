@@ -30,7 +30,10 @@ def recorrido(
         "validacion__validada_por",
         "version_obligacion",
     )
-    identificadores_evidencia = evidencias.values_list("pk", flat=True)
+    # La bitácora guarda el identificador como texto (`str(evidencia.pk)`), así que
+    # la búsqueda debe comparar texto contra texto: PostgreSQL no compara varchar
+    # con bigint.
+    identificadores_evidencia = [str(pk) for pk in evidencias.values_list("pk", flat=True)]
     eventos = (
         EventoBitacora.objects.filter(
             Q(centro_costo=centro, obligacion=obligacion)
