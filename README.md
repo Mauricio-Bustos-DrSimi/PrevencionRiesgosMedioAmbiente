@@ -59,11 +59,21 @@ ejecución sobre SQLite no puede confundirse con la demostración. Debe quedar
 verde antes de ampliar el piloto. El procedimiento está en
 [docs/recorrido-aceptacion-mvp.md](docs/recorrido-aceptacion-mvp.md).
 
-## Demostración con datos de la Bodega de Distribución
+## Piloto de la Bodega de Distribución
 
-`manage.py sembrar_demo_bodega` siembra el centro de costo ADM04 con las
-obligaciones que acredita la carpeta de respaldo del departamento y con
-evidencia **de demostración**, elegida para que los seis estados de cumplimiento
-se deriven solos. Los archivos que guarda son marcadores rotulados como tales y
-no sirven ante fiscalización. El procedimiento y sus límites están en
+Dos comandos cargan el centro de costo ADM04 con el respaldo real del
+departamento:
+
+- `manage.py resumir_respaldo_bodega --carpeta <ruta>` lee la carpeta de
+  constancias, extrae de cada PDF la fecha en que se realizó el curso y la
+  fecha en que expira, y escribe un resumen por curso **sin nombres ni RUT**,
+  que es lo único que entra al repositorio.
+- `manage.py sembrar_demo_bodega --usuario <prevencionista>` siembra las
+  obligaciones y su evidencia con esas fechas. Los estados de cumplimiento no
+  se declaran: se derivan.
+
+La periodicidad y la norma de origen de cada obligación son **preliminares** y
+Prevención debe confirmarlas; son las que deciden si una constancia aparece
+vigente o vencida. La siembra es irreversible, porque el modelo es append-only.
+El procedimiento y sus límites están en
 [docs/demo-bodega-distribucion.md](docs/demo-bodega-distribucion.md).

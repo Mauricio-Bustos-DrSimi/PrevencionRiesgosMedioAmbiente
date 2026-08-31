@@ -172,17 +172,33 @@ def _sumar_anos(fecha: date, anos: int) -> date:
         return fecha.replace(year=fecha.year + anos, month=2, day=28)
 
 
-def fecha_fin_vigencia(evidencia: Evidencia) -> date:
-    periodicidad = evidencia.periodicidad
+def fin_de_vigencia(
+    *,
+    fecha_emision: date,
+    fecha_vencimiento: date,
+    periodicidad: Periodicidad,
+) -> date:
+    """Hasta cuándo sirve una evidencia con estas fechas y esta periodicidad.
+
+    La fecha que trae el documento no manda por sí sola: si la obligación se
+    renueva más seguido que lo que el emisor concede, manda el ciclo. Por eso
+    se toma el menor de los dos.
+    """
     if periodicidad == Periodicidad.PERMANENTE:
         return date.max
     if periodicidad == Periodicidad.ANUAL:
-        limite_periodico = _sumar_anos(evidencia.fecha_emision, 1)
-        return min(evidencia.fecha_vencimiento, limite_periodico)
+        return min(fecha_vencimiento, _sumar_anos(fecha_emision, 1))
     if periodicidad == Periodicidad.BIENAL:
-        limite_periodico = _sumar_anos(evidencia.fecha_emision, 2)
-        return min(evidencia.fecha_vencimiento, limite_periodico)
-    return evidencia.fecha_vencimiento
+        return min(fecha_vencimiento, _sumar_anos(fecha_emision, 2))
+    return fecha_vencimiento
+
+
+def fecha_fin_vigencia(evidencia: Evidencia) -> date:
+    return fin_de_vigencia(
+        fecha_emision=evidencia.fecha_emision,
+        fecha_vencimiento=evidencia.fecha_vencimiento,
+        periodicidad=evidencia.periodicidad,
+    )
 
 
 def evidencia_esta_vigente(evidencia: Evidencia, *, en_fecha: date) -> bool:

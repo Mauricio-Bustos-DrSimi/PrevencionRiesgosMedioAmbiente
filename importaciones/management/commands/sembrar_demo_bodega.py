@@ -1,15 +1,19 @@
 """Siembra el piloto de la Bodega de Distribución para demostrar el MVP.
 
-Los datos que siembra son **de demostración**: las constancias reales de la
-carpeta de respaldo son PDF por trabajador, y el MVP todavía no modela
-trabajadores (es el paso 5 de la secuencia de construcción). Lo que se siembra
-son los cursos que esa carpeta acredita, elevados al grano que el MVP sí
-maneja: obligaciones del centro de costo.
+Las obligaciones y las fechas salen del respaldo real del departamento: las
+constancias de la plataforma de e-learning declaran cuándo se realizó el curso
+y cuándo expira, y esas son las fechas que se cargan. Lo único que el sistema
+agrega es la periodicidad con que la obligación se renueva, que la fija la
+matriz legal y no el proveedor del curso —y por eso está sin confirmar—.
 
-Cada archivo que se guarda es un marcador que lo dice en su primera línea, y
-cada evidencia queda con un emisor que la identifica como dato de
-demostración. Nada de esto debe confundirse con evidencia real ante
-fiscalización.
+Los estados no se declaran: se derivan. Una constancia de extintores de abril
+de 2024 aparece vencida si el ciclo es anual y vigente si es trienal, y esa
+diferencia es justamente lo que el piloto pone sobre la mesa.
+
+El grano es el centro de costo, no la persona: el MVP todavía no modela
+trabajadores (paso 5 de la secuencia). De cada obligación se carga la
+constancia que vence primero, porque el centro deja de estar cubierto cuando
+caduca la primera.
 
 Como el modelo es append-only, lo que este comando escribe **no se puede
 borrar**: por eso exige `--confirmar` y se niega a sembrar dos veces.
@@ -17,18 +21,21 @@ borrar**: por eso exige `--confirmar` y se niega a sembrar dos veces.
 
 from argparse import ArgumentParser
 from datetime import date
-from typing import Any, cast
+from pathlib import Path
+from typing import Any
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
-from evidencias.services import cargar_evidencia, validar_evidencia
+from evidencias.services import cargar_evidencia, fin_de_vigencia, validar_evidencia
 from obligaciones.models import (
     Obligacion,
+    Periodicidad,
     TipoVersion,
     TitularObligacion,
     VersionObligacion,
@@ -37,80 +44,50 @@ from planes_aplicacion.models import CambioAplicabilidad
 
 from importaciones.catalogo_demo import (
     CATALOGO,
+    NO_APLICAN,
+    SIN_RESPALDO,
+    ObligacionCatalogo,
+)
+from importaciones.lectura_constancias import (
+    CarpetaIlegible,
+    Constancia,
     CursoRespaldado,
-    ObligacionDemo,
-    SituacionDemo,
-    leer_respaldo,
+    RespaldoBodega,
+    constancias_por_obligacion,
+    leer_carpeta,
+    leer_resumen,
+)
+from importaciones.pdf import marcador_pdf
+
+
+CANAL = "Siembra del piloto"
+
+EMISOR_PLATAFORMA = "Plataforma de capacitación de la empresa"
+EMISOR_SIN_FECHA = "Fecha por confirmar: el documento escaneado no la declara"
+
+MOTIVO_VERSION = (
+    "Alta del piloto de la Bodega de Distribución. La norma de origen y la "
+    "periodicidad son preliminares: Prevención debe confirmarlas contra la "
+    "matriz legal antes de que este catálogo rija."
 )
 
 
-CANAL = "Siembra de demostración"
-EMISOR = "Demostración — no es evidencia real"
-
-CON_EVIDENCIA = {
-    SituacionDemo.VIGENTE,
-    SituacionDemo.POR_VENCER,
-    SituacionDemo.VENCIDO,
-    SituacionDemo.PENDIENTE_VALIDACION,
-}
-
-
-def marcador_pdf(lineas: list[str]) -> bytes:
-    """Arma un PDF de una página que se abre y dice qué es.
-
-    Se genera aquí, sin dependencias nuevas, porque los PDF originales de la
-    carpeta de respaldo no están descargados y no hay bytes reales que guardar.
-    """
-    instrucciones = ["BT", "/F1 11 Tf", "40 780 Td", "16 TL"]
-    for linea in lineas:
-        escapada = linea.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
-        instrucciones.append(f"({escapada}) Tj T*")
-    instrucciones.append("ET")
-    flujo = "\n".join(instrucciones).encode("cp1252", "replace")
-
-    objetos = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842]"
-        b" /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
-        b"<< /Length "
-        + str(len(flujo)).encode("ascii")
-        + b" >>\nstream\n"
-        + flujo
-        + b"\nendstream",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica"
-        b" /Encoding /WinAnsiEncoding >>",
-    ]
-
-    salida = bytearray(b"%PDF-1.4\n")
-    posiciones: list[int] = []
-    for numero, cuerpo in enumerate(objetos, start=1):
-        posiciones.append(len(salida))
-        salida += f"{numero} 0 obj\n".encode("ascii") + cuerpo + b"\nendobj\n"
-
-    inicio_xref = len(salida)
-    salida += f"xref\n0 {len(objetos) + 1}\n".encode("ascii")
-    salida += b"0000000000 65535 f \n"
-    for posicion in posiciones:
-        salida += f"{posicion:010d} 00000 n \n".encode("ascii")
-    salida += (
-        f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\n"
-        f"startxref\n{inicio_xref}\n%%EOF\n"
-    ).encode("ascii")
-    return bytes(salida)
-
-
 def nombre_archivo(curso: str) -> str:
-    """Convierte el nombre del curso en un nombre de archivo manejable."""
+    """Nombre neutro con que se guarda el archivo.
+
+    Los nombres originales de los exámenes traen el RUT del trabajador. Como
+    la evidencia se está cargando al grano del centro de costo y no al de la
+    persona, se guarda con un nombre que no identifica a nadie.
+    """
     limpio = "".join(c if c.isalnum() or c in " -" else "" for c in curso)
-    return "demo-" + "-".join(limpio.lower().split())[:80] + ".pdf"
+    return "-".join(limpio.lower().split())[:80] + ".pdf"
 
 
 class Command(BaseCommand):
     help = (
         "Siembra el centro de costo de la Bodega de Distribución con las "
-        "obligaciones que acredita la carpeta de respaldo, y con evidencia de "
-        "demostración que hace derivar los seis estados de cumplimiento."
+        "obligaciones y las fechas que acredita la carpeta de respaldo del "
+        "departamento."
     )
 
     def add_arguments(self, parser: ArgumentParser) -> None:
@@ -118,6 +95,14 @@ class Command(BaseCommand):
             "--usuario",
             required=True,
             help="Usuario que quedará como autor; debe pertenecer a Prevencionista.",
+        )
+        parser.add_argument(
+            "--carpeta",
+            default=None,
+            help=(
+                "Carpeta de respaldo. Si se indica, se guardan las constancias "
+                "originales; si no, se guarda un marcador con las mismas fechas."
+            ),
         )
         parser.add_argument(
             "--confirmar",
@@ -128,7 +113,8 @@ class Command(BaseCommand):
     def handle(self, *args: Any, **opciones: Any) -> None:
         del args
         actor = self._actor(opciones["usuario"])
-        respaldo = leer_respaldo()
+        respaldo = leer_resumen()
+        archivos = self._archivos(opciones["carpeta"])
 
         if CentroCosto.objects.filter(
             codigo_contable=respaldo.codigo_contable
@@ -144,12 +130,12 @@ class Command(BaseCommand):
         ]
         if faltantes:
             raise CommandError(
-                "El catálogo de demostración no describe estos cursos: "
+                "El catálogo no describe la norma ni la periodicidad de: "
                 + "; ".join(faltantes)
             )
 
         if not opciones["confirmar"]:
-            self._anunciar(respaldo)
+            self._anunciar(respaldo, archivos)
             self.stdout.write(
                 self.style.WARNING(
                     "\nNo se escribió nada. Repite con --confirmar para sembrar."
@@ -160,9 +146,21 @@ class Command(BaseCommand):
         with transaction.atomic():
             centro = self._crear_centro(respaldo, actor)
             for curso in respaldo.cursos:
-                self._sembrar_curso(centro, curso, CATALOGO[curso.nombre], actor)
+                self._sembrar_respaldado(
+                    centro,
+                    curso,
+                    CATALOGO[curso.nombre],
+                    actor,
+                    archivos.get(curso.nombre, []),
+                )
+            for nombre, catalogo in SIN_RESPALDO.items():
+                self._sembrar_sin_evidencia(centro, nombre, catalogo, actor)
+            for nombre, catalogo in NO_APLICAN.items():
+                self._sembrar_sin_evidencia(centro, nombre, catalogo, actor)
 
-        self._resumir(respaldo, centro)
+        self._resumir(respaldo, centro, archivos)
+
+    # --- entradas ---------------------------------------------------------
 
     def _actor(self, usuario: str) -> User:
         try:
@@ -176,20 +174,36 @@ class Command(BaseCommand):
             )
         return actor
 
-    def _anunciar(self, respaldo: Any) -> None:
-        self.stdout.write(
-            f"Centro de costo: {respaldo.codigo_contable} — {respaldo.nombre}"
-        )
-        self.stdout.write(
-            f"Respaldo: {respaldo.constancias_totales} constancias de "
-            f"{respaldo.trabajadores_distintos} trabajadores en "
-            f"{len(respaldo.cursos)} cursos."
-        )
-        for curso in respaldo.cursos:
-            situacion = CATALOGO[curso.nombre].situacion
-            self.stdout.write(f"  {curso.nombre}: {situacion.value}")
+    def _archivos(self, carpeta: str | None) -> dict[str, list[Constancia]]:
+        if carpeta is None:
+            return {}
+        try:
+            return constancias_por_obligacion(leer_carpeta(Path(carpeta)))
+        except CarpetaIlegible as exc:
+            raise CommandError(str(exc)) from exc
 
-    def _crear_centro(self, respaldo: Any, actor: User) -> CentroCosto:
+    # --- decisiones -------------------------------------------------------
+
+    def _constancia_que_rige(
+        self,
+        curso: CursoRespaldado,
+        periodicidad: Periodicidad,
+    ) -> tuple[date, date] | None:
+        """La constancia que caduca primero: es la que descubre al centro."""
+        if not curso.fechadas:
+            return None
+        return min(
+            curso.fechadas,
+            key=lambda par: fin_de_vigencia(
+                fecha_emision=par[0],
+                fecha_vencimiento=par[1],
+                periodicidad=periodicidad,
+            ),
+        )
+
+    # --- siembra ----------------------------------------------------------
+
+    def _crear_centro(self, respaldo: RespaldoBodega, actor: User) -> CentroCosto:
         centro = CentroCosto.objects.create(
             codigo_contable=respaldo.codigo_contable,
             nombre=respaldo.nombre,
@@ -206,23 +220,45 @@ class Command(BaseCommand):
         )
         return centro
 
-    def _sembrar_curso(
+    def _crear_obligacion(
+        self,
+        nombre: str,
+        catalogo: ObligacionCatalogo,
+        actor: User,
+    ) -> Obligacion:
+        obligacion = Obligacion.objects.create()
+        VersionObligacion.objects.create(
+            obligacion=obligacion,
+            numero=1,
+            nombre=nombre,
+            norma_origen=catalogo.norma_origen,
+            titular=TitularObligacion.CENTRO_COSTO,
+            periodicidad=catalogo.periodicidad,
+            tipos_centro=[CentroCosto.Tipo.BODEGA],
+            tipo_version=TipoVersion.ALTA,
+            autor=actor,
+            motivo=MOTIVO_VERSION,
+        )
+        registrar_evento(
+            actor=actor,
+            accion="alta",
+            entidad="obligación",
+            identificador=str(obligacion.pk),
+            descripcion=f"Se registró {nombre}.",
+            canal=CANAL,
+            contexto=ContextoBitacora.para_obligacion(obligacion),
+        )
+        return obligacion
+
+    def _declarar_aplicabilidad(
         self,
         centro: CentroCosto,
-        curso: CursoRespaldado,
-        demo: ObligacionDemo,
+        obligacion: Obligacion,
+        *,
+        aplica: bool,
+        motivo: str,
         actor: User,
     ) -> None:
-        obligacion = self._crear_obligacion(curso, demo, actor)
-        aplica = demo.situacion != SituacionDemo.NO_APLICA
-        motivo = (
-            demo.motivo_no_aplica
-            if not aplica
-            else (
-                f"Aplica según la carpeta de respaldo: {curso.constancias} "
-                f"constancias en {curso.resumen_grupos}."
-            )
-        )
         CambioAplicabilidad.objects.create(
             centro_costo=centro,
             obligacion=obligacion,
@@ -240,68 +276,102 @@ class Command(BaseCommand):
             contexto=ContextoBitacora.para_plan(centro, obligacion),
         )
 
-        if demo.situacion not in CON_EVIDENCIA:
-            return
-        self._cargar(centro, obligacion, curso, demo, actor)
-
-    def _crear_obligacion(
+    def _sembrar_respaldado(
         self,
+        centro: CentroCosto,
         curso: CursoRespaldado,
-        demo: ObligacionDemo,
+        catalogo: ObligacionCatalogo,
         actor: User,
-    ) -> Obligacion:
-        obligacion = Obligacion.objects.create()
-        version = VersionObligacion.objects.create(
-            obligacion=obligacion,
-            numero=1,
-            nombre=curso.nombre,
-            norma_origen=demo.norma_origen,
-            titular=TitularObligacion.CENTRO_COSTO,
-            periodicidad=demo.periodicidad,
-            tipos_centro=[CentroCosto.Tipo.BODEGA],
-            tipo_version=TipoVersion.ALTA,
-            autor=actor,
+        constancias: list[Constancia],
+    ) -> None:
+        obligacion = self._crear_obligacion(curso.nombre, catalogo, actor)
+        self._declarar_aplicabilidad(
+            centro,
+            obligacion,
+            aplica=True,
             motivo=(
-                "Alta de demostración derivada de la carpeta de respaldo de la "
-                "bodega. La norma de origen es preliminar y Prevención debe "
-                "confirmarla."
+                f"Aplica según el respaldo del departamento: {curso.constancias} "
+                f"constancias en {curso.resumen_grupos}."
             ),
-        )
-        registrar_evento(
             actor=actor,
-            accion="alta",
-            entidad="obligación",
-            identificador=str(obligacion.pk),
-            descripcion=f"Se registró {version.nombre}.",
-            canal=CANAL,
-            contexto=ContextoBitacora.para_obligacion(obligacion),
         )
-        return obligacion
+
+        rige = self._constancia_que_rige(curso, catalogo.periodicidad)
+        if rige is None:
+            # El respaldo existe pero es un escaneo sin fecha legible. Se carga
+            # para que quede a la vista, y se deja sin validar: la fecha la
+            # tiene que leer y confirmar Prevención.
+            self._cargar_sin_fecha(centro, obligacion, curso, actor, constancias)
+            return
+
+        emision, vencimiento = rige
+        self._cargar(
+            centro,
+            obligacion,
+            curso,
+            actor,
+            emisor=EMISOR_PLATAFORMA,
+            emision=emision,
+            vencimiento=vencimiento,
+            constancias=constancias,
+            validar=True,
+        )
+
+    def _sembrar_sin_evidencia(
+        self,
+        centro: CentroCosto,
+        nombre: str,
+        catalogo: ObligacionCatalogo,
+        actor: User,
+    ) -> None:
+        obligacion = self._crear_obligacion(nombre, catalogo, actor)
+        motivo = catalogo.motivo or (
+            "Aplica a la bodega y el respaldo del departamento no tiene nada "
+            "sobre ella. Queda sin evidencia hasta que se cargue."
+        )
+        self._declarar_aplicabilidad(
+            centro,
+            obligacion,
+            aplica=catalogo.aplica,
+            motivo=motivo,
+            actor=actor,
+        )
+
+    def _cargar_sin_fecha(
+        self,
+        centro: CentroCosto,
+        obligacion: Obligacion,
+        curso: CursoRespaldado,
+        actor: User,
+        constancias: list[Constancia],
+    ) -> None:
+        hoy = timezone.localdate()
+        self._cargar(
+            centro,
+            obligacion,
+            curso,
+            actor,
+            emisor=EMISOR_SIN_FECHA,
+            emision=hoy,
+            vencimiento=hoy,
+            constancias=constancias,
+            validar=False,
+        )
 
     def _cargar(
         self,
         centro: CentroCosto,
         obligacion: Obligacion,
         curso: CursoRespaldado,
-        demo: ObligacionDemo,
         actor: User,
+        *,
+        emisor: str,
+        emision: date,
+        vencimiento: date,
+        constancias: list[Constancia],
+        validar: bool,
     ) -> None:
-        emision = cast(date, demo.fecha_emision)
-        vencimiento = cast(date, demo.fecha_vencimiento)
-        contenido = marcador_pdf(
-            [
-                "ARCHIVO DE DEMOSTRACION - NO ES EVIDENCIA REAL",
-                "",
-                f"Centro de costo: {centro.codigo_contable} - {centro.nombre}",
-                f"Obligacion: {curso.nombre}",
-                f"Emision: {emision.isoformat()}",
-                f"Vencimiento: {vencimiento.isoformat()}",
-                "",
-                "El respaldo real son "
-                f"{curso.constancias} constancias por trabajador",
-                "que todavia no se pueden cargar: el MVP no modela trabajadores.",
-            ]
-        )
+        contenido = self._contenido(centro, curso, constancias, emision, vencimiento)
         evidencia = cargar_evidencia(
             centro=centro,
             obligacion=obligacion,
@@ -311,22 +381,110 @@ class Command(BaseCommand):
                 contenido,
                 content_type="application/pdf",
             ),
-            emisor=EMISOR,
+            emisor=emisor,
             fecha_emision=emision,
             fecha_vencimiento=vencimiento,
             canal=CANAL,
         )
-        if demo.situacion != SituacionDemo.PENDIENTE_VALIDACION:
+        if validar:
             validar_evidencia(evidencia=evidencia, actor=actor, canal=CANAL)
 
-    def _resumir(self, respaldo: Any, centro: CentroCosto) -> None:
+    def _contenido(
+        self,
+        centro: CentroCosto,
+        curso: CursoRespaldado,
+        constancias: list[Constancia],
+        emision: date,
+        vencimiento: date,
+    ) -> bytes:
+        """El PDF original si se indicó la carpeta; si no, un marcador."""
+        for constancia in constancias:
+            if (constancia.fecha_emision, constancia.fecha_vencimiento) == (
+                emision,
+                vencimiento,
+            ):
+                return constancia.ruta.read_bytes()
+        if constancias and not any(c.esta_fechada for c in constancias):
+            return constancias[0].ruta.read_bytes()
+        return marcador_pdf(
+            [
+                "CONSTANCIA NO ADJUNTA",
+                "",
+                f"Centro de costo: {centro.codigo_contable} - {centro.nombre}",
+                f"Obligacion: {curso.nombre}",
+                f"Emision: {emision.isoformat()}",
+                f"Vencimiento: {vencimiento.isoformat()}",
+                "",
+                f"El respaldo son {curso.constancias} constancias por trabajador",
+                "que no se adjuntaron al sembrar. Las fechas si son las reales,",
+                "leidas de la constancia que caduca primero.",
+            ]
+        )
+
+    # --- salida -----------------------------------------------------------
+
+    def _anunciar(
+        self,
+        respaldo: RespaldoBodega,
+        archivos: dict[str, list[Constancia]],
+    ) -> None:
+        hoy = timezone.localdate()
+        self.stdout.write(
+            f"Centro de costo: {respaldo.codigo_contable} — {respaldo.nombre}"
+        )
+        self.stdout.write(
+            f"Respaldo: {respaldo.constancias_totales} constancias de "
+            f"{respaldo.trabajadores_distintos} trabajadores."
+        )
+        self.stdout.write(
+            "Archivos: "
+            + (
+                "las constancias originales."
+                if archivos
+                else "marcadores; no se indicó --carpeta."
+            )
+        )
+        self.stdout.write(f"\nEstado que derivaría al {hoy.isoformat()}:\n")
+        for curso in respaldo.cursos:
+            catalogo = CATALOGO[curso.nombre]
+            rige = self._constancia_que_rige(curso, catalogo.periodicidad)
+            if rige is None:
+                detalle = "pendiente de validación (el escaneo no trae fecha)"
+            else:
+                fin = fin_de_vigencia(
+                    fecha_emision=rige[0],
+                    fecha_vencimiento=rige[1],
+                    periodicidad=catalogo.periodicidad,
+                )
+                detalle = (
+                    f"rige la del {rige[0].isoformat()}, "
+                    f"{catalogo.periodicidad.label.lower()} hasta {fin.isoformat()}"
+                )
+            self.stdout.write(f"  {curso.nombre}: {detalle}")
+        for nombre in SIN_RESPALDO:
+            self.stdout.write(f"  {nombre}: sin evidencia")
+        for nombre in NO_APLICAN:
+            self.stdout.write(f"  {nombre}: no aplica")
+
+    def _resumir(
+        self,
+        respaldo: RespaldoBodega,
+        centro: CentroCosto,
+        archivos: dict[str, list[Constancia]],
+    ) -> None:
+        total = len(respaldo.cursos) + len(SIN_RESPALDO) + len(NO_APLICAN)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Sembrado {centro.codigo_contable} — {centro.nombre} con "
-                f"{len(respaldo.cursos)} obligaciones."
+                f"{total} obligaciones."
             )
         )
+        if not archivos:
+            self.stdout.write(
+                "Los archivos guardados son marcadores: no se indicó --carpeta. "
+                "Las fechas sí son las reales del respaldo."
+            )
         self.stdout.write(
-            "Los archivos guardados son marcadores de demostración: los PDF "
-            "originales no están descargados desde OneDrive."
+            "La periodicidad de cada obligación está sin confirmar, y es la que "
+            "decide si una constancia aparece vigente o vencida."
         )
