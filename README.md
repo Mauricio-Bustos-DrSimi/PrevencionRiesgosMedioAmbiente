@@ -18,6 +18,8 @@ python -m venv .venv
 
 Configura las variables descritas en `.env.example` en el entorno de ejecución. La aplicación usa PostgreSQL de forma predeterminada y no carga automáticamente archivos `.env`.
 
+Los archivos de evidencia se guardan bajo `MEDIA_ROOT`, que por omisión es `medios/` junto al código y se puede mover con `DJANGO_MEDIA_ROOT`. Con retención indefinida, ese directorio y la base son una sola unidad de respaldo.
+
 `DIAS_POR_VENCER` define el umbral uniforme de la bandeja operativa; su valor predeterminado es 30 días y la propia bandeja muestra el valor activo.
 
 Inicializa la base y crea el primer Sysadmin:
@@ -56,3 +58,12 @@ Exige PostgreSQL y **se omite** si la base configurada es otra, de modo que una
 ejecución sobre SQLite no puede confundirse con la demostración. Debe quedar
 verde antes de ampliar el piloto. El procedimiento está en
 [docs/recorrido-aceptacion-mvp.md](docs/recorrido-aceptacion-mvp.md).
+
+## Demostración con datos de la Bodega de Distribución
+
+`manage.py sembrar_demo_bodega` siembra el centro de costo ADM04 con las
+obligaciones que acredita la carpeta de respaldo del departamento y con
+evidencia **de demostración**, elegida para que los seis estados de cumplimiento
+se deriven solos. Los archivos que guarda son marcadores rotulados como tales y
+no sirven ante fiscalización. El procedimiento y sus límites están en
+[docs/demo-bodega-distribucion.md](docs/demo-bodega-distribucion.md).

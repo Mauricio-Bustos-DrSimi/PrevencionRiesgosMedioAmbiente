@@ -99,6 +99,13 @@ USE_TZ = True
 DIAS_POR_VENCER = int(os.environ.get("DIAS_POR_VENCER", "30"))
 
 STATIC_URL = "static/"
+
+# Los archivos de evidencia viven en disco del servidor y su hash queda en la
+# base. Sin este valor explícito, Django los escribiría en el directorio de
+# trabajo, que es el propio código fuente.
+MEDIA_URL = "medios/"
+MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "medios"))
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LOGIN_URL = "iniciar_sesion"

@@ -10,16 +10,26 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
+from aceptacion.reloj import reloj_en
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
 
 from evidencias.models import Evidencia
 
 
+# El historial se consulta a fechas absolutas, así que los actos que reconstruye
+# tienen que quedar registrados en un momento igual de fijo.
+JORNADA = timezone.make_aware(datetime(2026, 8, 28, 9, 0))
+
+
 @override_settings(DIAS_POR_VENCER=30)
 class HistorialCumplimientoHttpTests(TestCase):
     def setUp(self) -> None:
+        reloj = reloj_en(JORNADA)
+        reloj.__enter__()
+        self.addCleanup(reloj.__exit__, None, None, None)
         self.directorio_temporal = tempfile.TemporaryDirectory()
         self.addCleanup(self.directorio_temporal.cleanup)
         self._override_media = self.settings(MEDIA_ROOT=self.directorio_temporal.name)

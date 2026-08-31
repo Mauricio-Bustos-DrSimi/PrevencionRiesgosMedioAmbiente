@@ -1,0 +1,119 @@
+{
+  "centro_costo": {
+    "codigo_contable": "ADM04",
+    "nombre": "Bodega de Distribución",
+    "tipo": "bodega"
+  },
+  "trabajadores_distintos": 129,
+  "constancias_totales": 245,
+  "cursos": [
+    {
+      "nombre": "Análisis del Decreto Supremo 44",
+      "constancias": 2,
+      "grupos": {
+        "Jefaturas de bodegas": 2
+      }
+    },
+    {
+      "nombre": "Examen ocupacional de altura física",
+      "constancias": 59,
+      "grupos": {
+        "Auxiliares de bodegas Nivel operativo": 50,
+        "Operadores de maquinaria (Nivel ope)": 9
+      }
+    },
+    {
+      "nombre": "Examen ocupacional de conductor clase D",
+      "constancias": 14,
+      "grupos": {
+        "Auxiliares de bodegas Nivel operativo": 14
+      }
+    },
+    {
+      "nombre": "Examen ocupacional de conductor de vehículo liviano",
+      "constancias": 2,
+      "grupos": {
+        "Auxiliar de mantencion": 2
+      }
+    },
+    {
+      "nombre": "Examen ocupacional de operadores de maquinaria",
+      "constancias": 7,
+      "grupos": {
+        "Operadores de maquinaria (Nivel ope)": 7
+      }
+    },
+    {
+      "nombre": "Factores de riesgo MMC",
+      "constancias": 1,
+      "grupos": {
+        "Jefaturas de bodegas": 1
+      }
+    },
+    {
+      "nombre": "Factores de riesgo TMERT",
+      "constancias": 5,
+      "grupos": {
+        "Jefaturas de bodegas": 5
+      }
+    },
+    {
+      "nombre": "Fortalecimiento de competencias psicosociales",
+      "constancias": 37,
+      "grupos": {
+        "Administrativos de bodegas": 10,
+        "Auxiliar de aseo(Nivel opera)": 1,
+        "Auxiliar de mantencion": 1,
+        "Auxiliares de bodegas Nivel operativo": 13,
+        "Jefaturas de bodegas": 7,
+        "Operadores de maquinaria (Nivel ope)": 5
+      }
+    },
+    {
+      "nombre": "Gestión del riesgo de desastre",
+      "constancias": 4,
+      "grupos": {
+        "Jefaturas de bodegas": 4
+      }
+    },
+    {
+      "nombre": "Licencia de conducir",
+      "constancias": 5,
+      "grupos": {
+        "Operadores de maquinaria (Nivel ope)": 5
+      }
+    },
+    {
+      "nombre": "Liderazgo en seguridad y salud para supervisores",
+      "constancias": 2,
+      "grupos": {
+        "Jefaturas de bodegas": 2
+      }
+    },
+    {
+      "nombre": "Orientación en prevención de riesgos laborales",
+      "constancias": 4,
+      "grupos": {
+        "Jefaturas de bodegas": 4
+      }
+    },
+    {
+      "nombre": "Prevención del consumo de alcohol y drogas",
+      "constancias": 2,
+      "grupos": {
+        "Jefaturas de bodegas": 2
+      }
+    },
+    {
+      "nombre": "Uso y manejo de extintores",
+      "constancias": 101,
+      "grupos": {
+        "Administrativos de bodegas": 12,
+        "Auxiliar de aseo(Nivel opera)": 2,
+        "Auxiliares de bodegas Nivel operativo": 71,
+        "Jefaturas de bodegas": 8,
+        "Operadores de maquinaria (Nivel ope)": 8
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import tempfile
-from datetime import date
+from datetime import date, datetime
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -7,7 +7,9 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from aceptacion.reloj import reloj_en
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
 from planes_aplicacion.models import CambioAplicabilidad
@@ -15,8 +17,16 @@ from planes_aplicacion.models import CambioAplicabilidad
 from evidencias.models import Evidencia
 
 
+# La bandeja se consulta a fechas absolutas; los actos que la alimentan tienen
+# que quedar registrados en un momento igual de fijo.
+JORNADA = timezone.make_aware(datetime(2026, 8, 28, 9, 0))
+
+
 class OperacionPilotoHttpTests(TestCase):
     def setUp(self) -> None:
+        reloj = reloj_en(JORNADA)
+        reloj.__enter__()
+        self.addCleanup(reloj.__exit__, None, None, None)
         self.directorio_temporal = tempfile.TemporaryDirectory()
         self.addCleanup(self.directorio_temporal.cleanup)
         self._override_media = self.settings(MEDIA_ROOT=self.directorio_temporal.name)

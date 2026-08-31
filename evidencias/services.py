@@ -90,6 +90,7 @@ def cargar_evidencia(
     emisor: str,
     fecha_emision: date,
     fecha_vencimiento: date,
+    canal: str = "web",
 ) -> Evidencia:
     cambio = estado_actual(centro, obligacion)
     if cambio is None or not cambio.aplica:
@@ -120,7 +121,7 @@ def cargar_evidencia(
                 entidad="Evidencia",
                 identificador=str(evidencia.pk),
                 descripcion=f"Cargó evidencia para {obligacion}.",
-                canal="web",
+                canal=canal,
                 contexto=ContextoBitacora.para_evidencia(evidencia),
             )
     except Exception as exc:
@@ -136,6 +137,7 @@ def validar_evidencia(
     *,
     evidencia: Evidencia,
     actor: User,
+    canal: str = "web",
 ) -> ValidacionEvidencia:
     if not actor.groups.filter(name="Prevencionista").exists():
         raise PermissionDenied("Solo un Prevencionista puede validar evidencia.")
@@ -157,7 +159,7 @@ def validar_evidencia(
                 f"(versión {evidencia.version_obligacion.numero}); confirmó "
                 "su correspondencia y sus fechas."
             ),
-            canal="web",
+            canal=canal,
             contexto=ContextoBitacora.para_evidencia(evidencia),
         )
     return validacion

@@ -5,3 +5,12 @@
 __pycache__/
 *.py[cod]
 db.sqlite3
+
+# Archivos de evidencia: viven en disco del servidor, no en el repositorio.
+/medios/
+
+# Carpetas de respaldo del departamento. Contienen constancias por trabajador,
+# con nombre y RUT: datos personales que no deben entrar al repositorio.
+/docs/*/
+!/docs/adr/
+!/docs/agents/
