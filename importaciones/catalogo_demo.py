@@ -15,7 +15,7 @@ solo deriva la consecuencia de la regla que se le dé.
 
 from dataclasses import dataclass
 
-from obligaciones.models import Periodicidad
+from obligaciones.models import Periodicidad, TitularObligacion
 
 
 @dataclass(frozen=True)
@@ -24,68 +24,86 @@ class ObligacionCatalogo:
 
     norma_origen: str
     periodicidad: Periodicidad
+    titular: TitularObligacion = TitularObligacion.CENTRO_COSTO
     aplica: bool = True
     motivo: str = ""
 
 
-# Obligaciones que la carpeta de respaldo acredita. El estado de cumplimiento
-# no se declara aquí: se deriva de las fechas que traen las constancias.
+# Obligaciones que la carpeta de respaldo acredita. Las catorce son del
+# **trabajador**: su respaldo son diplomas y exámenes a nombre de una persona
+# identificada por su RUT, y ninguna de las 245 constancias es del centro de
+# costo. El estado de cumplimiento no se declara aquí: se deriva de las fechas
+# que traen las constancias, persona por persona.
 CATALOGO: dict[str, ObligacionCatalogo] = {
     "Manejo de extintores con simulador": ObligacionCatalogo(
         norma_origen="DS 594, Título IV, párrafo 3: prevención y combate de incendios",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Fortalecimiento de competencias psicosociales": ObligacionCatalogo(
         norma_origen="Protocolo de vigilancia de riesgos psicosociales (Ley 16.744)",
         periodicidad=Periodicidad.BIENAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Orientación en prevención de riesgos laborales": ObligacionCatalogo(
         norma_origen="DS 44/2023: obligación de informar los riesgos laborales",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Prevención del consumo de alcohol y drogas": ObligacionCatalogo(
         norma_origen="Política interna de la empresa",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Análisis del Decreto Supremo 44": ObligacionCatalogo(
         norma_origen="DS 44/2023: nuevo reglamento de gestión preventiva",
         periodicidad=Periodicidad.BIENAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Liderazgo en seguridad y salud para supervisores": ObligacionCatalogo(
         norma_origen="DS 44/2023: responsabilidades de la línea de mando",
         periodicidad=Periodicidad.BIENAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Factores de riesgo TMERT": ObligacionCatalogo(
         norma_origen="Norma Técnica TMERT y DS 594 art. 110 a)",
         periodicidad=Periodicidad.BIENAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Factores de riesgo MMC": ObligacionCatalogo(
         norma_origen="Ley 20.001 y DS 63/2005: manejo manual de carga",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Gestión del riesgo de desastre": ObligacionCatalogo(
         norma_origen="DS 44/2023: plan de emergencia y evacuación",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Examen ocupacional de altura física": ObligacionCatalogo(
         norma_origen="Protocolo de vigilancia para trabajo en altura física (Ley 16.744)",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Examen ocupacional de conductor clase D": ObligacionCatalogo(
         norma_origen="Ley 18.290 y DS 594",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Examen ocupacional de operadores de maquinaria": ObligacionCatalogo(
         norma_origen="DS 594 y protocolos de vigilancia (Ley 16.744)",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Examen ocupacional de conductor de vehículo liviano": ObligacionCatalogo(
         norma_origen="Ley 18.290 y DS 594",
         periodicidad=Periodicidad.ANUAL,
+        titular=TitularObligacion.TRABAJADOR,
     ),
     "Licencia de conducir": ObligacionCatalogo(
         norma_origen="Ley 18.290, ley de tránsito",
         periodicidad=Periodicidad.POR_EVENTO,
+        titular=TitularObligacion.TRABAJADOR,
     ),
 }
 

@@ -23,18 +23,36 @@ el departamento, y hay que confirmarlas antes de que esto rija:
 Ambas cosas quedan escritas en el motivo de cada obligación sembrada, para que
 nadie las lea como si estuvieran confirmadas.
 
-## Los dos límites que no se pudieron levantar
+## El grano es el titular que declara el catálogo
 
-**El grano es el centro de costo, no la persona.** La carpeta tiene 245
-constancias de 129 trabajadores, pero el MVP todavía no modela trabajadores
-—es el paso 5 de la secuencia de construcción—. De cada obligación se carga
-**la constancia que caduca primero**, porque el centro deja de estar cubierto
-cuando vence la primera. Las otras 244 quedan en la carpeta.
+**Las catorce obligaciones que la carpeta acredita son del trabajador.** Su
+respaldo son diplomas y exámenes a nombre de una persona identificada por su
+RUT: de las 245 constancias, ninguna es del centro de costo. Se cargan **las
+245**, cada una atribuida a quien la obtuvo, y se da de alta a las **129
+personas** con el cargo que declara el nivel de carpeta que las contiene.
+
+Las únicas obligaciones que sí son de la instalación son las que no tienen
+ningún documento —matriz IPER, reglamento interno, comité paritario— más la
+vigilancia de sílice, que está en No aplica. Esas siguen colgando del centro
+de costo.
+
+> **Antes esto estaba al revés.** La primera siembra atribuyó las dieciocho
+> obligaciones al centro de costo y cargó una constancia por obligación, la que
+> caduca primero: el sistema afirmaba que una bodega tiene licencia de
+> conducir, y no se podía saber quién estaba cubierto ni cuántos faltaban. Si
+> tienes esa base sembrada, corrígela con `retractar_obligaciones_por_trabajador`
+> (más abajo) en vez de borrarla.
+
+**Atribuir exige la carpeta original.** El resumen versionado es anónimo a
+propósito —no lleva nombres ni RUT— y por eso ya no basta para sembrar.
+Ejecutar sin `--carpeta` **falla diciendo eso**: no degrada en silencio a la
+carga por centro de costo, que es justamente el error que se corrigió.
 
 **Los exámenes ocupacionales y las licencias no traen fecha.** Son escaneos sin
 capa de texto: 87 de los 245 archivos. Se cargan igual, para que estén a la
-vista, y quedan **pendientes de validación**: la fecha la tiene que leer y
-confirmar Prevención. Es exactamente lo que ese estado significa.
+vista, **una por persona**, y quedan **pendientes de validación**: la fecha la
+lee Prevención del papel y la escribe con el mecanismo de corrección, que la
+registra con su autor y su motivo sin tocar el archivo ni su hash.
 
 ## Cómo se ejecuta
 
@@ -60,13 +78,43 @@ dispositivo* antes de empezar):
     --confirmar
 ```
 
-`--carpeta` es opcional. Sin ella las fechas siguen siendo las reales —salen
-del resumen versionado— pero se guarda un marcador en vez de la constancia
-original. Con ella se guarda el PDF verdadero, con su hash SHA-256.
+`--carpeta` es **obligatoria**: sin ella no hay a quién atribuir las
+constancias, y el comando se niega a sembrar en vez de colgarlas del centro de
+costo. Se guarda el PDF verdadero de cada constancia, con su hash SHA-256.
 
-El archivo se guarda con un nombre que no identifica a nadie: los escaneos de
-la clínica se llaman `Informe_<RUT>_<marca de tiempo>`, y la evidencia se está
-cargando al centro de costo, no a la persona.
+El archivo se guarda con el nombre de la obligación y el RUT de su titular,
+porque la evidencia ahora acredita a esa persona. **Quién puede abrir ese
+archivo deja de ser una pregunta teórica**: los cuatro exámenes ocupacionales
+son datos de salud de una persona identificada. Hoy solo Prevención y Sysadmin
+entran al sistema, así que el riesgo no se materializa; hay que resolverlo
+antes de abrir el sistema a los Encargados.
+
+Si la carpeta tiene alguna constancia cuya carpeta de persona no trae un RUT
+válido, el comando **se detiene y las enumera** en vez de inventar una
+dotación. Hay que corregirlas en el origen.
+
+### Retractar una siembra anterior
+
+La base que se sembró antes de que el trabajador existiera tiene catorce
+obligaciones atribuidas al centro de costo que en realidad son de personas. Se
+retractan, no se borran:
+
+```powershell
+# Ver qué se cerraría, sin escribir nada.
+.\.venv\Scripts\python.exe manage.py retractar_obligaciones_por_trabajador `
+    --usuario <prevencionista>
+
+# Retractar.
+.\.venv\Scripts\python.exe manage.py retractar_obligaciones_por_trabajador `
+    --usuario <prevencionista> --confirmar
+```
+
+Cada obligación se cierra con una versión nueva cuyo motivo declara el **error
+de atribución** —y lo distingue de un cambio normativo—, en el canal de
+bitácora «Retractación del piloto». La evidencia cargada bajo ellas sigue
+consultable, descargable y verificable por hash. **No se descartaron**:
+vuelven al plan cuando existan con su titular correcto. Ejecutarlo dos veces no
+duplica cierres.
 
 > **La siembra no se puede deshacer.** El modelo es append-only: lo que se
 > escribe no se borra. Por eso el comando exige `--confirmar` y se niega a
@@ -75,48 +123,54 @@ cargando al centro de costo, no a la persona.
 
 ## Lo que queda en pantalla
 
-Al 31 de agosto de 2026, con `DIAS_POR_VENCER=30`:
-
-| Estado | Obligaciones |
-| --- | --- |
-| Vigente | Análisis del Decreto Supremo 44; Factores de riesgo TMERT; Gestión del riesgo de desastre; Liderazgo en seguridad y salud para supervisores; Prevención del consumo de alcohol y drogas |
-| Por vencer | Factores de riesgo MMC |
-| Vencido | Fortalecimiento de competencias psicosociales; Manejo de extintores con simulador; Orientación en prevención de riesgos laborales |
-| Pendiente de validación | Los cuatro exámenes ocupacionales y la licencia de conducir |
-| Sin evidencia | Matriz IPER vigente; Reglamento Interno de Higiene y Seguridad entregado; Comité Paritario de Higiene y Seguridad constituido |
-| No aplica | Vigilancia de exposición ocupacional a sílice |
-
-Los seis estados salen solos, sin que nadie los teclee. Ninguno se declaró: se
-derivan de las fechas, la periodicidad y la aplicabilidad.
+Las cuatro obligaciones de la instalación se leen igual que antes: tres en
+**Sin evidencia** —matriz IPER, reglamento interno, comité paritario— y la
+vigilancia de sílice en **No aplica**.
 
 **Los tres «Sin evidencia» son el hallazgo más útil.** Son obligaciones que a
 una bodega de 129 personas le corresponden y de las que la carpeta no tiene
 nada. No es una falla de la siembra: es lo que el departamento verá al abrir el
 plan.
 
-**«Por vencer» se mueve.** Hoy lo ocupa MMC, cuyo ciclo anual termina justo
-hoy; desde mañana pasa a Vencido y lo reemplaza Prevención del consumo de
-alcohol y drogas, que queda Por vencer hasta el 1 de octubre. Entre el 2 de
-octubre y el 16 de noviembre no hay ninguna en ese estado, hasta que entra
-TMERT. Si la demostración cae en esa ventana, conviene mostrar Por vencer
-consultando una fecha pasada en el plan.
+Las catorce obligaciones de las personas se leen como **estado agregado**: el
+peor estado presente y cuántas personas hay en cada uno. «Manejo de extintores:
+Vencido — 5 de 52» quiere decir que hay cinco personas vencidas entre las 52 a
+las que la obligación aplica, y desde ahí se abre el desglose para saber cuáles
+cinco. Una persona a la que la obligación le aplica y no tiene ninguna
+constancia aparece en **Sin evidencia**: eso es lo que la siembra anterior no
+podía mostrar.
+
+Los seis estados salen solos, sin que nadie los teclee. Ninguno se declaró: se
+derivan de las fechas, la periodicidad, la validación y la aplicabilidad.
+
+**El estado se mueve solo con el calendario.** Las constancias otorgan tres
+años y los ciclos configurados son anuales o bienales, así que buena parte de
+lo que la carpeta acredita aparece vencida. Esa diferencia es la conversación
+que el piloto viene a abrir: **cuál es el ciclo real**.
 
 ## Recorrido sugerido
 
-1. **Plan de aplicación de ADM04.** Las 18 obligaciones con su estado. Nadie
-   escribió ninguno de esos estados.
-2. **Abrir una evidencia vencida** (extintores). La constancia real, del 8 de
-   abril de 2024, con su hash. El certificado dice que vale hasta 2027; el
-   sistema la da por vencida porque el ciclo configurado es anual. Ahí está la
-   conversación: **cuál es el ciclo real**.
-3. **Validar un examen ocupacional.** Está pendiente porque el escaneo no
-   declara fecha. Prevención la lee del documento y la confirma.
-4. **Bandeja de vencimientos.** Lo mismo, ordenado por urgencia y sin filtrar
-   por centro.
-5. **Consultar el plan a una fecha pasada.** El estado se reconstruye a esa
-   fecha, sin tocar la historia.
-6. **Bitácora.** Todos los actos de la siembra llevan el canal «Siembra del
-   piloto», así que se distinguen de los que entren por la aplicación.
+1. **Plan de aplicación de ADM04.** Las cuatro obligaciones de la instalación y
+   las catorce agregadas de las personas, con su recuento. Nadie escribió
+   ninguno de esos estados.
+2. **Abrir el desglose de extintores.** Quiénes están vigentes, quiénes
+   vencidos y quiénes sin ninguna constancia. Aquí se ve la cobertura real.
+3. **Abrir una evidencia vencida.** La constancia real, del 8 de abril de 2024,
+   a nombre de su titular y con su hash. El certificado dice que vale hasta
+   2027; el sistema la da por vencida porque el ciclo configurado es anual.
+4. **Validar un examen ocupacional corrigiendo su fecha.** Está pendiente
+   porque el escaneo no declara fecha. Prevención la lee del papel y la escribe:
+   queda una corrección con autor y motivo, el archivo y su hash no cambian, y
+   la vigencia pasa a derivarse del dato confirmado. La pantalla muestra las dos
+   fechas, la de la carga y la corregida.
+5. **Bandeja de vencimientos.** Cada caso dice **a quién hay que citar**, no
+   cuántos faltan, y se puede filtrar por trabajador.
+6. **Consultar el plan a una fecha pasada.** El estado se reconstruye a esa
+   fecha, con la dotación que existía entonces, sin tocar la historia.
+7. **Bitácora.** Todos los actos de la siembra llevan el canal «Siembra del
+   piloto», así que se distinguen de los que entren por la aplicación. El alta
+   del trabajador, la corrección de fechas y la validación se leen como tres
+   actos distintos.
 
 ## Cómo se leyó la carpeta
 
@@ -127,7 +181,15 @@ cada PDF extrae la capa de texto. Las constancias de la plataforma traen
 
 El resumen que deja en `importaciones/datos/` guarda **solo recuentos y pares
 de fechas**: ni un nombre ni un RUT, para que pueda versionarse. La carpeta
-original está excluida del repositorio en `.gitignore`.
+original está excluida del repositorio en `.gitignore`. Ese es el motivo de que
+la siembra necesite la carpeta: los nombres y los RUT que hacen falta para
+atribuir cada constancia no están —ni deben estar— en el repositorio.
+
+De cada carpeta de persona la siembra saca el RUT, que es la llave, y el
+nombre, que es solo un atributo. Cuando el mismo RUT aparece con varias
+escrituras del nombre —hay 184 carpetas de persona para 129 personas— se queda
+con la más larga, porque las otras vienen truncadas. Cuando aparece bajo más de
+un nivel de cargo, se queda con el que más constancias suyas contiene.
 
 ### Lo que la lectura corrigió
 
@@ -142,8 +204,8 @@ original está excluida del repositorio en `.gitignore`.
 
 ### Problemas de datos en la carpeta
 
-Hay que corregirlos en el origen antes del paso 5, cuando las obligaciones
-pasen a ser por trabajador:
+La lectura los tolera —las 245 constancias se reconocen y los 129 RUT se leen
+sin excepciones—, pero conviene corregirlos en el origen:
 
 - **49 de los 129 RUT aparecen con más de una grafía del nombre** —hay 184
   carpetas de persona para 129 personas—, casi siempre por truncamiento. El RUT
@@ -152,6 +214,9 @@ pasen a ser por trabajador:
   sin el guion que separa, otra `<RUT> -Apellido...` sin el espacio.
 - **Un RUT con un espacio antes del dígito verificador**, que rompe el patrón
   `12345678-9`.
+- **Tres personas aparecen bajo más de un nivel de cargo.** La siembra se queda
+  con el que más constancias suyas contiene, pero el cargo verdadero lo tiene
+  que confirmar Prevención.
 - **Cuatro archivos nombrados con el nombre de la persona** en vez del patrón
   habitual, dentro de las carpetas de licencia de conducir.
 - **Las rutas superan los 260 caracteres** de Windows. Sin el prefijo de ruta

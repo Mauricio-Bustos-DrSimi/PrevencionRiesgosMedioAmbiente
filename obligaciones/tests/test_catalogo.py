@@ -99,11 +99,13 @@ class CatalogoObligacionesTests(TestCase):
             "Mantener extintores certificados",
         )
 
-    def test_operacion_mvp_solo_ofrece_centro_de_costo_como_titular(self) -> None:
+    def test_la_operacion_ofrece_los_titulares_implementados(self) -> None:
         respuesta = self.client.get(reverse("obligaciones:crear"))
 
         self.assertContains(respuesta, 'value="centro_costo"')
-        self.assertNotContains(respuesta, 'value="trabajador"')
+        self.assertContains(respuesta, 'value="trabajador"')
+        # Externo y empresa se omiten en vez de ofrecerse: aceptarlos aquí
+        # dejaría obligaciones cuya evidencia nadie puede cargar.
         self.assertNotContains(respuesta, 'value="externo"')
         self.assertNotContains(respuesta, 'value="empresa"')
         self.assertContains(

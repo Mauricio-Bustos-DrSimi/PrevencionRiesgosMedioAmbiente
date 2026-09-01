@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from centros_costo.models import CentroCosto
     from evidencias.models import Evidencia
     from obligaciones.models import Obligacion
+    from trabajadores.models import Trabajador
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class ContextoBitacora:
     centro_costo: "CentroCosto | None" = None
     obligacion: "Obligacion | None" = None
     evidencia: "Evidencia | None" = None
+    trabajador: "Trabajador | None" = None
 
     @classmethod
     def general(cls) -> "ContextoBitacora":
@@ -43,7 +45,17 @@ class ContextoBitacora:
             centro_costo=evidencia.centro_costo,
             obligacion=evidencia.obligacion,
             evidencia=evidencia,
+            trabajador=evidencia.trabajador,
         )
+
+    @classmethod
+    def para_trabajador(
+        cls,
+        trabajador: "Trabajador",
+        centro: "CentroCosto | None" = None,
+        obligacion: "Obligacion | None" = None,
+    ) -> "ContextoBitacora":
+        return cls(centro_costo=centro, obligacion=obligacion, trabajador=trabajador)
 
 
 def registrar_evento(
@@ -70,4 +82,5 @@ def registrar_evento(
         centro_costo=contexto.centro_costo,
         obligacion=contexto.obligacion,
         evidencia=contexto.evidencia,
+        trabajador=contexto.trabajador,
     )

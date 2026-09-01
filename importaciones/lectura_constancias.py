@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
+from trabajadores.rut import RutInvalido, normalizar_rut
+
 from .pdf import texto_de_pdf
 
 
@@ -72,7 +74,11 @@ SUBTIPO_CANONICO: dict[str, str] = {
 
 _ES_EXAMEN = re.compile(r"^examenes?\s+ocupacionales?$")
 _PREFIJO = re.compile(r"^\s*\d+\s*[.\-]\s*")
-_RUT = re.compile(r"\s*(\d{7,8})\s*-\s*([\dkK])")
+# Las carpetas de persona se llaman «<RUT> - <Nombre>», pero el separador es
+# irregular: falta el guion, falta el espacio, o hay un espacio antes del
+# dígito verificador. Se acepta cualquiera de esas escrituras y el RUT se
+# valida después con su dígito verificador.
+_RUT = re.compile(r"^\s*(\d{7,8})\s*-?\s*([\dkK])(?![\d])\s*-?\s*(.*)$")
 
 _MESES = {
     "ENERO": 1,
@@ -154,7 +160,12 @@ def fechas_de_constancia(texto: str) -> tuple[date | None, date | None]:
 
 @dataclass(frozen=True)
 class Constancia:
-    """Un archivo de la carpeta, ya interpretado."""
+    """Un archivo de la carpeta, ya interpretado.
+
+    `rut` y `nombre` identifican a la persona a la que pertenece la constancia
+    y no salen nunca al resumen versionado: solo la siembra los usa, para
+    atribuir la evidencia a su titular real.
+    """
 
     obligacion: str
     grupo: str
@@ -162,6 +173,8 @@ class Constancia:
     rut: str | None
     fecha_emision: date | None
     fecha_vencimiento: date | None
+    nombre: str = ""
+    carpeta_persona: str = ""
 
     @property
     def esta_fechada(self) -> bool:
@@ -206,16 +219,24 @@ class RespaldoBodega:
         return None
 
 
-def _rut_de(carpeta: str) -> str | None:
-    """Lee el RUT del nombre de la carpeta de la persona.
+def _persona_de(carpeta: str) -> tuple[str | None, str]:
+    """Lee el RUT y el nombre de la carpeta de la persona.
 
-    Se usa solo para contar cuántos trabajadores distintos hay; no sale del
-    proceso. El nombre no sirve como llave: viene truncado y con variantes.
+    El RUT es la llave y se devuelve en su forma canónica; el nombre no sirve
+    como llave, porque viene truncado y con variantes —hay 184 carpetas de
+    persona para 129 personas—, pero sí sirve para mostrar a quién pertenece
+    la constancia.
     """
     encontrado = _RUT.match(carpeta)
     if encontrado is None:
-        return None
-    return f"{encontrado.group(1)}-{encontrado.group(2).upper()}"
+        return None, carpeta.strip()
+    nombre = encontrado.group(3).strip(" -")
+    try:
+        return normalizar_rut(
+            f"{encontrado.group(1)}-{encontrado.group(2)}"
+        ), nombre
+    except RutInvalido:
+        return None, nombre
 
 
 def ruta_sin_limite(raiz: Path) -> Path:
@@ -267,14 +288,17 @@ def leer_carpeta(raiz: Path) -> list[Constancia]:
         except OSError as exc:
             raise CarpetaIlegible(f"No se pudo leer {archivo.name}: {exc}") from exc
 
+        rut, nombre = _persona_de(persona)
         constancias.append(
             Constancia(
                 obligacion=obligacion,
                 grupo=_PREFIJO.sub("", grupo).strip(),
                 ruta=archivo,
-                rut=_rut_de(persona),
+                rut=rut,
                 fecha_emision=emision,
                 fecha_vencimiento=vencimiento,
+                nombre=nombre,
+                carpeta_persona=persona,
             )
         )
     return constancias

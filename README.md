@@ -39,7 +39,7 @@ Las pruebas locales usan SQLite en memoria mediante una opción explícita porqu
 ```powershell
 $env:DJANGO_TEST_USE_SQLITE='1'
 .\.venv\Scripts\python.exe manage.py test
-.\.venv\Scripts\python.exe -m mypy acceso aceptacion bitacora centros_costo configuracion evidencias importaciones obligaciones planes_aplicacion manage.py
+.\.venv\Scripts\python.exe -m mypy acceso aceptacion bitacora centros_costo configuracion evidencias importaciones obligaciones planes_aplicacion trabajadores manage.py
 ```
 
 Los paquetes se enumeran de forma explícita: `mypy .` recorrería también `docs/`,
@@ -68,9 +68,15 @@ departamento:
   constancias, extrae de cada PDF la fecha en que se realizó el curso y la
   fecha en que expira, y escribe un resumen por curso **sin nombres ni RUT**,
   que es lo único que entra al repositorio.
-- `manage.py sembrar_demo_bodega --usuario <prevencionista>` siembra las
-  obligaciones y su evidencia con esas fechas. Los estados de cumplimiento no
-  se declaran: se derivan.
+- `manage.py sembrar_demo_bodega --usuario <prevencionista> --carpeta <ruta>`
+  siembra las obligaciones, da de alta a las 129 personas del respaldo y carga
+  las 245 constancias **a nombre de quien las obtuvo**. `--carpeta` es
+  obligatoria: el resumen versionado es anónimo y no permite atribuir. Los
+  estados de cumplimiento no se declaran: se derivan.
+- `manage.py retractar_obligaciones_por_trabajador --usuario <prevencionista>`
+  corrige una base sembrada antes de que el trabajador existiera: cierra con
+  motivo las catorce obligaciones que se atribuyeron al centro de costo y son
+  de personas. No borra nada; la evidencia sigue consultable.
 
 La periodicidad y la norma de origen de cada obligación son **preliminares** y
 Prevención debe confirmarlas; son las que deciden si una constancia aparece

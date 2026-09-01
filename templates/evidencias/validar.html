@@ -8,16 +8,32 @@
       <dl>
         <dt>Centro de costo</dt>
         <dd>{{ evidencia.centro_costo.nombre }}</dd>
+        <dt>Titular</dt>
+        <dd>
+          {% if evidencia.trabajador %}
+            <a href="{% url 'trabajadores:detalle' evidencia.trabajador.pk %}">{{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }})</a>
+          {% else %}
+            Centro de costo
+          {% endif %}
+        </dd>
         <dt>Obligación</dt>
         <dd>{{ evidencia.nombre_obligacion }}</dd>
         <dt>Emisor</dt>
         <dd>{{ evidencia.emisor }}</dd>
-        <dt>Fecha de emisión</dt>
+        <dt>Fecha de emisión con que se cargó</dt>
         <dd>{{ evidencia.fecha_emision }}</dd>
-        <dt>Fecha de vencimiento</dt>
+        <dt>Fecha de vencimiento con que se cargó</dt>
         <dd>{{ evidencia.fecha_vencimiento }}</dd>
+        {% if fechas.fue_corregida %}
+          <dt>Fecha de emisión corregida</dt>
+          <dd>{{ fechas.fecha_emision }}</dd>
+          <dt>Fecha de vencimiento corregida</dt>
+          <dd>{{ fechas.fecha_vencimiento }}</dd>
+        {% endif %}
         <dt>Periodicidad</dt>
         <dd>{{ evidencia.periodicidad_mostrada }}</dd>
+        <dt>Hash SHA-256</dt>
+        <dd>{{ evidencia.hash_sha256 }}</dd>
         <dt>Estado de cumplimiento</dt>
         <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
       </dl>
@@ -32,10 +48,27 @@
         <form method="post">
           {% csrf_token %}
           <p>Confirmo que la evidencia corresponde a la obligación y que sus fechas son correctas.</p>
+          <p>Si el documento no declaraba sus fechas, escribe aquí las que dice el papel: se registran como una corrección aparte, sin tocar el archivo ni su hash.</p>
+          {{ formulario.as_p }}
           <button type="submit">Validar evidencia</button>
         </form>
       {% endif %}
-      <h2>Evidencias de esta obligación en el centro de costo</h2>
+
+      <h2>Corregir las fechas leídas del documento</h2>
+      <p>Corregir una fecha no es cargar una evidencia nueva: no llegó otro documento, se leyó bien el que ya estaba.</p>
+      <form method="post" action="{% url 'evidencias:corregir' evidencia.pk %}">
+        {% csrf_token %}
+        {{ formulario_correccion.as_p }}
+        <button type="submit">Registrar corrección de fechas</button>
+      </form>
+      <h3>Correcciones registradas</h3>
+      <ol>
+        {% for correccion in correcciones %}
+          <li>{{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
+        {% empty %}<li>Sin correcciones: rigen las fechas con que se cargó.</li>{% endfor %}
+      </ol>
+
+      <h2>Evidencias de esta obligación para este titular</h2>
       <ol>
         {% for item in historial %}
           <li>

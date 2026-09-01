@@ -27,6 +27,11 @@
             <li>{% if item.caso %}{{ item.caso.nombre_obligacion }}{% else %}{{ item.obligacion.version_actual.nombre }}{% endif %} —
               {% if item.caso %}{{ item.caso.estado }}
               {% else %}Sin configurar{% endif %}
+              {% if item.caso.es_agregado %}
+                — {{ item.caso.cuantos_en_el_estado }} de {{ item.caso.trabajadores_aplicables }} trabajadores
+                ({% for estado, cantidad in item.caso.recuento %}{{ estado }}: {{ cantidad }}{% if not forloop.last %}; {% endif %}{% endfor %})
+                <a href="{% url 'planes_aplicacion:desglose' centro.pk item.obligacion.pk %}{% if fecha %}?fecha={{ fecha|date:'Y-m-d' }}{% endif %}">Ver desglose por persona</a>
+              {% endif %}
               {% if item.caso.evidencia %}
                 <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
               {% endif %}

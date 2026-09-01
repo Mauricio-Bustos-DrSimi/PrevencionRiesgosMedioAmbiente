@@ -15,6 +15,7 @@ urlpatterns = [
     path("centros-de-costo/", include("centros_costo.urls")),
     path("obligaciones/", include("obligaciones.urls")),
     path("planes-aplicacion/", include("planes_aplicacion.urls")),
+    path("trabajadores/", include("trabajadores.urls")),
     path("importaciones/", include("importaciones.urls")),
     path("evidencias/", include("evidencias.urls")),
     path("bitacora/", include("bitacora.urls")),

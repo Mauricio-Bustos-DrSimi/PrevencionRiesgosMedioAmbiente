@@ -14,6 +14,7 @@ from .models import (
     TipoVersion,
     TitularObligacion,
     VersionObligacion,
+    cargos_escritos,
 )
 
 
@@ -22,7 +23,12 @@ class AltaObligacionAdminForm(forms.ModelForm):
     norma_origen = forms.CharField(label="Norma de origen", max_length=255)
     titular = forms.ChoiceField(
         label="Titular de obligación",
-        choices=((TitularObligacion.CENTRO_COSTO, "Centro de costo"),),
+        # Externo y empresa son pasos posteriores: se omiten en vez de
+        # ofrecerse y fallar al cargar la evidencia.
+        choices=(
+            (TitularObligacion.CENTRO_COSTO, "Centro de costo"),
+            (TitularObligacion.TRABAJADOR, "Trabajador"),
+        ),
     )
     periodicidad = forms.ChoiceField(
         label="Periodicidad",
@@ -34,11 +40,20 @@ class AltaObligacionAdminForm(forms.ModelForm):
         required=False,
         widget=forms.CheckboxSelectMultiple,
     )
+    cargos_sugeridos = forms.CharField(
+        label="Cargos sugeridos",
+        required=False,
+        help_text="Uno por línea; vacío significa todos.",
+        widget=forms.Textarea(attrs={"rows": 3}),
+    )
     motivo = forms.CharField(label="Motivo", widget=forms.Textarea)
 
     class Meta:
         model = Obligacion
         fields: tuple[()] = ()
+
+    def clean_cargos_sugeridos(self) -> list[str]:
+        return cargos_escritos(self.cleaned_data.get("cargos_sugeridos", ""))
 
 
 @admin.register(Obligacion)
@@ -50,6 +65,7 @@ class ObligacionAdmin(admin.ModelAdmin):
         "titular",
         "periodicidad",
         "tipos_centro",
+        "cargos_sugeridos",
         "motivo",
     )
     list_display = (
@@ -106,6 +122,7 @@ class ObligacionAdmin(admin.ModelAdmin):
             titular=form.cleaned_data["titular"],
             periodicidad=form.cleaned_data["periodicidad"],
             tipos_centro=form.cleaned_data["tipos_centro"],
+            cargos_sugeridos=form.cleaned_data["cargos_sugeridos"],
             tipo_version=TipoVersion.ALTA,
             autor=actor,
             motivo=form.cleaned_data["motivo"],

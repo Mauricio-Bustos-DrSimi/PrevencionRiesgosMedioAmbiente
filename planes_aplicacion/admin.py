@@ -14,6 +14,7 @@ class CambioAplicabilidadAdmin(admin.ModelAdmin):
     list_display = (
         "ocurrido_en",
         "centro_costo",
+        "trabajador",
         "obligacion",
         "aplica",
         "autor",
@@ -53,15 +54,19 @@ class CambioAplicabilidadAdmin(admin.ModelAdmin):
             return
         obj.autor = cast(User, request.user)
         super().save_model(request, obj, form, change)
+        sujeto = obj.trabajador or obj.centro_costo
         registrar_evento(
             actor=request.user,
             accion="aplicar" if obj.aplica else "declarar_no_aplica",
             entidad="plan de aplicación",
-            identificador=str(obj.centro_costo_id),
-            descripcion=f"Actualizó la aplicabilidad de {obj.obligacion}.",
+            identificador=str(obj.trabajador_id or obj.centro_costo_id),
+            descripcion=(
+                f"Actualizó la aplicabilidad de {obj.obligacion} para {sujeto}."
+            ),
             canal="Panel administrativo",
-            contexto=ContextoBitacora.para_plan(
-                obj.centro_costo,
-                obj.obligacion,
+            contexto=ContextoBitacora(
+                centro_costo=obj.centro_costo,
+                obligacion=obj.obligacion,
+                trabajador=obj.trabajador,
             ),
         )

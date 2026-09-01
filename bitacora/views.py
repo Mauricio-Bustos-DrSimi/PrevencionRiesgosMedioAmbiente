@@ -29,7 +29,8 @@ def recorrido(
         "cargada_por",
         "validacion__validada_por",
         "version_obligacion",
-    )
+        "trabajador",
+    ).prefetch_related("correcciones__autor")
     # La bitácora guarda el identificador como texto (`str(evidencia.pk)`), así que
     # la búsqueda debe comparar texto contra texto: PostgreSQL no compara varchar
     # con bigint.
@@ -64,10 +65,18 @@ def recorrido(
         .select_related("actor")
         .order_by("ocurrido_en", "pk")
     )
-    cambios = CambioAplicabilidad.objects.filter(
-        centro_costo=centro,
-        obligacion=obligacion,
-    ).select_related("autor")
+    # El plan de una obligación de titular trabajador no cuelga del centro,
+    # pero se decide para la gente del centro: la trazabilidad de la
+    # instalación tiene que mostrarlo igual, con su autor y su motivo.
+    cambios = (
+        CambioAplicabilidad.objects.filter(
+            Q(centro_costo=centro)
+            | Q(trabajador__asignaciones__centro_costo=centro),
+            obligacion=obligacion,
+        )
+        .select_related("autor", "trabajador")
+        .distinct()
+    )
     return render(
         request,
         "bitacora/recorrido.html",

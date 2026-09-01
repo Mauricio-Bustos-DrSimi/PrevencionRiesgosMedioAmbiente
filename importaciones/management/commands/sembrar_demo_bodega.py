@@ -10,16 +10,23 @@ Los estados no se declaran: se derivan. Una constancia de extintores de abril
 de 2024 aparece vencida si el ciclo es anual y vigente si es trienal, y esa
 diferencia es justamente lo que el piloto pone sobre la mesa.
 
-El grano es el centro de costo, no la persona: el MVP todavía no modela
-trabajadores (paso 5 de la secuencia). De cada obligación se carga la
-constancia que vence primero, porque el centro deja de estar cubierto cuando
-caduca la primera.
+**El grano es el titular que declara el catálogo.** Las catorce obligaciones
+que la carpeta acredita son del trabajador, así que se cargan las 245
+constancias, cada una a nombre de la persona cuyo RUT nombra su carpeta, y se
+da de alta a las 129 personas con el cargo que declara el nivel que las
+contiene. Las que sí son de la instalación —matriz IPER, reglamento interno,
+comité paritario, vigilancia de sílice— siguen colgando del centro de costo.
+
+Atribuir exige la carpeta original: el resumen versionado es anónimo a
+propósito y no basta. Sembrar sin ella **falla con ese motivo** en vez de
+degradar en silencio a la carga por centro de costo.
 
 Como el modelo es append-only, lo que este comando escribe **no se puede
 borrar**: por eso exige `--confirmar` y se niega a sembrar dos veces.
 """
 
 from argparse import ArgumentParser
+from collections import defaultdict
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -32,15 +39,16 @@ from django.utils import timezone
 
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
-from evidencias.services import cargar_evidencia, fin_de_vigencia, validar_evidencia
+from evidencias.services import cargar_evidencia, validar_evidencia
 from obligaciones.models import (
     Obligacion,
-    Periodicidad,
     TipoVersion,
     TitularObligacion,
     VersionObligacion,
 )
 from planes_aplicacion.models import CambioAplicabilidad
+from trabajadores.models import Trabajador
+from trabajadores.services import crear_trabajador, validar_trabajador
 
 from importaciones.catalogo_demo import (
     CATALOGO,
@@ -53,11 +61,9 @@ from importaciones.lectura_constancias import (
     Constancia,
     CursoRespaldado,
     RespaldoBodega,
-    constancias_por_obligacion,
     leer_carpeta,
     leer_resumen,
 )
-from importaciones.pdf import marcador_pdf
 
 
 CANAL = "Siembra del piloto"
@@ -71,23 +77,42 @@ MOTIVO_VERSION = (
     "matriz legal antes de que este catálogo rija."
 )
 
+MOTIVO_ALTA_TRABAJADOR = (
+    "Alta desde la carpeta de respaldo del departamento: la persona aparece "
+    "con constancias a su nombre en el respaldo de la Bodega de Distribución."
+)
 
-def nombre_archivo(curso: str) -> str:
-    """Nombre neutro con que se guarda el archivo.
+MOTIVO_PLAN_TRABAJADOR = (
+    "Plan individual confirmado al sembrar, a partir de la sugerencia del "
+    "cargo y de lo que la carpeta de respaldo acredita a su nombre."
+)
 
-    Los nombres originales de los exámenes traen el RUT del trabajador. Como
-    la evidencia se está cargando al grano del centro de costo y no al de la
-    persona, se guarda con un nombre que no identifica a nadie.
+FALTA_LA_CARPETA = (
+    "Estas obligaciones son del trabajador y su respaldo son constancias a "
+    "nombre de personas: {obligaciones}.\n"
+    "El resumen versionado es anónimo a propósito —no lleva nombres ni RUT— y "
+    "no permite atribuirlas. Vuelve a ejecutar con --carpeta apuntando a la "
+    "carpeta de respaldo original. No se siembra por centro de costo: eso es "
+    "justamente el error que se corrigió."
+)
+
+
+def nombre_archivo(curso: str, rut: str) -> str:
+    """Nombre del archivo guardado: la obligación y el RUT de su titular.
+
+    La evidencia acredita a una persona, así que su archivo la nombra. Quién
+    puede abrirlo es otra pregunta —un examen ocupacional es un dato de salud—
+    y se resuelve con el rol Encargado, que todavía no existe.
     """
     limpio = "".join(c if c.isalnum() or c in " -" else "" for c in curso)
-    return "-".join(limpio.lower().split())[:80] + ".pdf"
+    return "-".join(limpio.lower().split())[:60] + f"-{rut}.pdf"
 
 
 class Command(BaseCommand):
     help = (
         "Siembra el centro de costo de la Bodega de Distribución con las "
-        "obligaciones y las fechas que acredita la carpeta de respaldo del "
-        "departamento."
+        "obligaciones, los trabajadores y las constancias que acredita la "
+        "carpeta de respaldo del departamento."
     )
 
     def add_arguments(self, parser: ArgumentParser) -> None:
@@ -100,8 +125,9 @@ class Command(BaseCommand):
             "--carpeta",
             default=None,
             help=(
-                "Carpeta de respaldo. Si se indica, se guardan las constancias "
-                "originales; si no, se guarda un marcador con las mismas fechas."
+                "Carpeta de respaldo original. Obligatoria si el catálogo "
+                "declara obligaciones de titular trabajador: sin ella no hay "
+                "a quién atribuir las constancias."
             ),
         )
         parser.add_argument(
@@ -114,7 +140,7 @@ class Command(BaseCommand):
         del args
         actor = self._actor(opciones["usuario"])
         respaldo = leer_resumen()
-        archivos = self._archivos(opciones["carpeta"])
+        constancias = self._constancias(opciones["carpeta"])
 
         if CentroCosto.objects.filter(
             codigo_contable=respaldo.codigo_contable
@@ -134,8 +160,13 @@ class Command(BaseCommand):
                 + "; ".join(faltantes)
             )
 
+        self._exigir_carpeta_para_atribuir(respaldo, constancias)
+        sin_titular = [c for c in constancias if c.rut is None]
+        if sin_titular:
+            raise CommandError(self._mensaje_sin_titular(sin_titular))
+
         if not opciones["confirmar"]:
-            self._anunciar(respaldo, archivos)
+            self._anunciar(respaldo, constancias)
             self.stdout.write(
                 self.style.WARNING(
                     "\nNo se escribió nada. Repite con --confirmar para sembrar."
@@ -145,20 +176,40 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             centro = self._crear_centro(respaldo, actor)
-            for curso in respaldo.cursos:
-                self._sembrar_respaldado(
-                    centro,
-                    curso,
+            obligaciones = {
+                curso.nombre: self._crear_obligacion(
+                    curso.nombre,
                     CATALOGO[curso.nombre],
                     actor,
-                    archivos.get(curso.nombre, []),
+                    cargos=sorted(curso.grupos),
                 )
-            for nombre, catalogo in SIN_RESPALDO.items():
-                self._sembrar_sin_evidencia(centro, nombre, catalogo, actor)
-            for nombre, catalogo in NO_APLICAN.items():
-                self._sembrar_sin_evidencia(centro, nombre, catalogo, actor)
+                for curso in respaldo.cursos
+            }
+            for nombre, catalogo in {**SIN_RESPALDO, **NO_APLICAN}.items():
+                obligacion = self._crear_obligacion(nombre, catalogo, actor)
+                self._declarar_aplicabilidad_del_centro(
+                    centro,
+                    obligacion,
+                    catalogo,
+                    actor,
+                )
+            trabajadores = self._dar_de_alta(centro, constancias, actor)
+            self._confirmar_planes(
+                trabajadores,
+                obligaciones,
+                constancias,
+                respaldo,
+                actor,
+            )
+            self._cargar_constancias(
+                centro,
+                obligaciones,
+                trabajadores,
+                constancias,
+                actor,
+            )
 
-        self._resumir(respaldo, centro, archivos)
+        self._resumir(respaldo, centro, constancias)
 
     # --- entradas ---------------------------------------------------------
 
@@ -174,31 +225,36 @@ class Command(BaseCommand):
             )
         return actor
 
-    def _archivos(self, carpeta: str | None) -> dict[str, list[Constancia]]:
+    def _constancias(self, carpeta: str | None) -> list[Constancia]:
         if carpeta is None:
-            return {}
+            return []
         try:
-            return constancias_por_obligacion(leer_carpeta(Path(carpeta)))
+            return leer_carpeta(Path(carpeta))
         except CarpetaIlegible as exc:
             raise CommandError(str(exc)) from exc
 
-    # --- decisiones -------------------------------------------------------
-
-    def _constancia_que_rige(
+    def _exigir_carpeta_para_atribuir(
         self,
-        curso: CursoRespaldado,
-        periodicidad: Periodicidad,
-    ) -> tuple[date, date] | None:
-        """La constancia que caduca primero: es la que descubre al centro."""
-        if not curso.fechadas:
-            return None
-        return min(
-            curso.fechadas,
-            key=lambda par: fin_de_vigencia(
-                fecha_emision=par[0],
-                fecha_vencimiento=par[1],
-                periodicidad=periodicidad,
-            ),
+        respaldo: RespaldoBodega,
+        constancias: list[Constancia],
+    ) -> None:
+        del_trabajador = [
+            curso.nombre
+            for curso in respaldo.cursos
+            if CATALOGO[curso.nombre].titular == TitularObligacion.TRABAJADOR
+        ]
+        if del_trabajador and not constancias:
+            raise CommandError(
+                FALTA_LA_CARPETA.format(obligaciones="; ".join(del_trabajador))
+            )
+
+    def _mensaje_sin_titular(self, constancias: list[Constancia]) -> str:
+        carpetas = sorted({c.carpeta_persona for c in constancias})
+        return (
+            f"{len(constancias)} constancias no dicen a quién pertenecen: su "
+            "carpeta no trae un RUT válido. Corrígelo en el origen antes de "
+            "sembrar; inventar una dotación no es una opción.\n  "
+            + "\n  ".join(carpetas)
         )
 
     # --- siembra ----------------------------------------------------------
@@ -225,6 +281,8 @@ class Command(BaseCommand):
         nombre: str,
         catalogo: ObligacionCatalogo,
         actor: User,
+        *,
+        cargos: list[str] | None = None,
     ) -> Obligacion:
         obligacion = Obligacion.objects.create()
         VersionObligacion.objects.create(
@@ -232,9 +290,10 @@ class Command(BaseCommand):
             numero=1,
             nombre=nombre,
             norma_origen=catalogo.norma_origen,
-            titular=TitularObligacion.CENTRO_COSTO,
+            titular=catalogo.titular,
             periodicidad=catalogo.periodicidad,
             tipos_centro=[CentroCosto.Tipo.BODEGA],
+            cargos_sugeridos=cargos or [],
             tipo_version=TipoVersion.ALTA,
             autor=actor,
             motivo=MOTIVO_VERSION,
@@ -250,25 +309,27 @@ class Command(BaseCommand):
         )
         return obligacion
 
-    def _declarar_aplicabilidad(
+    def _declarar_aplicabilidad_del_centro(
         self,
         centro: CentroCosto,
         obligacion: Obligacion,
-        *,
-        aplica: bool,
-        motivo: str,
+        catalogo: ObligacionCatalogo,
         actor: User,
     ) -> None:
+        motivo = catalogo.motivo or (
+            "Aplica a la bodega y el respaldo del departamento no tiene nada "
+            "sobre ella. Queda sin evidencia hasta que se cargue."
+        )
         CambioAplicabilidad.objects.create(
             centro_costo=centro,
             obligacion=obligacion,
-            aplica=aplica,
+            aplica=catalogo.aplica,
             motivo=motivo,
             autor=actor,
         )
         registrar_evento(
             actor=actor,
-            accion="aplicar" if aplica else "declarar_no_aplica",
+            accion="aplicar" if catalogo.aplica else "declarar_no_aplica",
             entidad="plan de aplicación",
             identificador=str(centro.pk),
             descripcion=f"Actualizó la aplicabilidad de {obligacion}.",
@@ -276,214 +337,198 @@ class Command(BaseCommand):
             contexto=ContextoBitacora.para_plan(centro, obligacion),
         )
 
-    def _sembrar_respaldado(
+    def _dar_de_alta(
         self,
         centro: CentroCosto,
-        curso: CursoRespaldado,
-        catalogo: ObligacionCatalogo,
-        actor: User,
         constancias: list[Constancia],
-    ) -> None:
-        obligacion = self._crear_obligacion(curso.nombre, catalogo, actor)
-        self._declarar_aplicabilidad(
-            centro,
-            obligacion,
-            aplica=True,
-            motivo=(
-                f"Aplica según el respaldo del departamento: {curso.constancias} "
-                f"constancias en {curso.resumen_grupos}."
-            ),
-            actor=actor,
-        )
-
-        rige = self._constancia_que_rige(curso, catalogo.periodicidad)
-        if rige is None:
-            # El respaldo existe pero es un escaneo sin fecha legible. Se carga
-            # para que quede a la vista, y se deja sin validar: la fecha la
-            # tiene que leer y confirmar Prevención.
-            self._cargar_sin_fecha(centro, obligacion, curso, actor, constancias)
-            return
-
-        emision, vencimiento = rige
-        self._cargar(
-            centro,
-            obligacion,
-            curso,
-            actor,
-            emisor=EMISOR_PLATAFORMA,
-            emision=emision,
-            vencimiento=vencimiento,
-            constancias=constancias,
-            validar=True,
-        )
-
-    def _sembrar_sin_evidencia(
-        self,
-        centro: CentroCosto,
-        nombre: str,
-        catalogo: ObligacionCatalogo,
         actor: User,
-    ) -> None:
-        obligacion = self._crear_obligacion(nombre, catalogo, actor)
-        motivo = catalogo.motivo or (
-            "Aplica a la bodega y el respaldo del departamento no tiene nada "
-            "sobre ella. Queda sin evidencia hasta que se cargue."
-        )
-        self._declarar_aplicabilidad(
-            centro,
-            obligacion,
-            aplica=catalogo.aplica,
-            motivo=motivo,
-            actor=actor,
-        )
+    ) -> dict[str, Trabajador]:
+        """Crea una sola persona por RUT, aunque aparezca en varios cursos."""
+        trabajadores: dict[str, Trabajador] = {}
+        for rut, nombre, cargo in self._personas(constancias):
+            trabajador = crear_trabajador(
+                rut=rut,
+                nombre=nombre,
+                cargo=cargo,
+                centro=centro,
+                motivo=MOTIVO_ALTA_TRABAJADOR,
+                actor=actor,
+                canal=CANAL,
+            )
+            validar_trabajador(trabajador=trabajador, actor=actor, canal=CANAL)
+            trabajadores[rut] = trabajador
+        return trabajadores
 
-    def _cargar_sin_fecha(
+    def _personas(
         self,
-        centro: CentroCosto,
-        obligacion: Obligacion,
-        curso: CursoRespaldado,
-        actor: User,
         constancias: list[Constancia],
+    ) -> list[tuple[str, str, str]]:
+        """Reduce las constancias a una persona por RUT.
+
+        Del nombre se queda con la escritura más larga: las carpetas lo traen
+        truncado de varias formas y el RUT es la única llave confiable. Del
+        cargo, con el nivel de carpeta que más constancias suyas contiene.
+        """
+        nombres: dict[str, str] = {}
+        cargos: dict[str, defaultdict[str, int]] = {}
+        for constancia in constancias:
+            rut = constancia.rut
+            assert rut is not None
+            if len(constancia.nombre) > len(nombres.get(rut, "")):
+                nombres[rut] = constancia.nombre
+            cargos.setdefault(rut, defaultdict(int))[constancia.grupo] += 1
+        return [
+            (
+                rut,
+                nombres[rut] or rut,
+                max(cargos[rut].items(), key=lambda par: (par[1], par[0]))[0],
+            )
+            for rut in sorted(nombres)
+        ]
+
+    def _confirmar_planes(
+        self,
+        trabajadores: dict[str, Trabajador],
+        obligaciones: dict[str, Obligacion],
+        constancias: list[Constancia],
+        respaldo: RespaldoBodega,
+        actor: User,
+    ) -> None:
+        """Confirma el plan individual de cada persona, uno por uno.
+
+        Parte de la sugerencia del cargo —los cursos que ese nivel de carpeta
+        tiene— y agrega lo que la carpeta acredita a nombre de la persona. Que
+        una obligación quede en el plan sin constancia es el punto: así se ve
+        cuántos faltan, y no solo quiénes están cubiertos.
+        """
+        por_cargo: defaultdict[str, set[str]] = defaultdict(set)
+        for curso in respaldo.cursos:
+            for grupo in curso.grupos:
+                por_cargo[grupo].add(curso.nombre)
+        acreditadas: defaultdict[str, set[str]] = defaultdict(set)
+        for constancia in constancias:
+            assert constancia.rut is not None
+            acreditadas[constancia.rut].add(constancia.obligacion)
+
+        for rut, trabajador in trabajadores.items():
+            del_plan = por_cargo[trabajador.cargo] | acreditadas[rut]
+            for nombre in sorted(del_plan):
+                CambioAplicabilidad.objects.create(
+                    trabajador=trabajador,
+                    obligacion=obligaciones[nombre],
+                    aplica=True,
+                    motivo=MOTIVO_PLAN_TRABAJADOR,
+                    autor=actor,
+                )
+            registrar_evento(
+                actor=actor,
+                accion="confirmar_sugerencia_trabajador",
+                entidad="plan de aplicación",
+                identificador=trabajador.rut,
+                descripcion=(
+                    f"Confirmó el plan individual de {trabajador.nombre} "
+                    f"({trabajador.cargo}): {len(del_plan)} obligaciones."
+                ),
+                canal=CANAL,
+                contexto=ContextoBitacora.para_trabajador(
+                    trabajador,
+                    trabajador.centro_costo_actual,
+                ),
+            )
+
+    def _cargar_constancias(
+        self,
+        centro: CentroCosto,
+        obligaciones: dict[str, Obligacion],
+        trabajadores: dict[str, Trabajador],
+        constancias: list[Constancia],
+        actor: User,
     ) -> None:
         hoy = timezone.localdate()
-        self._cargar(
-            centro,
-            obligacion,
-            curso,
-            actor,
-            emisor=EMISOR_SIN_FECHA,
-            emision=hoy,
-            vencimiento=hoy,
-            constancias=constancias,
-            validar=False,
-        )
-
-    def _cargar(
-        self,
-        centro: CentroCosto,
-        obligacion: Obligacion,
-        curso: CursoRespaldado,
-        actor: User,
-        *,
-        emisor: str,
-        emision: date,
-        vencimiento: date,
-        constancias: list[Constancia],
-        validar: bool,
-    ) -> None:
-        contenido = self._contenido(centro, curso, constancias, emision, vencimiento)
-        evidencia = cargar_evidencia(
-            centro=centro,
-            obligacion=obligacion,
-            actor=actor,
-            archivo=SimpleUploadedFile(
-                nombre_archivo(curso.nombre),
-                contenido,
-                content_type="application/pdf",
-            ),
-            emisor=emisor,
-            fecha_emision=emision,
-            fecha_vencimiento=vencimiento,
-            canal=CANAL,
-        )
-        if validar:
-            validar_evidencia(evidencia=evidencia, actor=actor, canal=CANAL)
-
-    def _contenido(
-        self,
-        centro: CentroCosto,
-        curso: CursoRespaldado,
-        constancias: list[Constancia],
-        emision: date,
-        vencimiento: date,
-    ) -> bytes:
-        """El PDF original si se indicó la carpeta; si no, un marcador."""
         for constancia in constancias:
-            if (constancia.fecha_emision, constancia.fecha_vencimiento) == (
-                emision,
-                vencimiento,
-            ):
-                return constancia.ruta.read_bytes()
-        if constancias and not any(c.esta_fechada for c in constancias):
-            return constancias[0].ruta.read_bytes()
-        return marcador_pdf(
-            [
-                "CONSTANCIA NO ADJUNTA",
-                "",
-                f"Centro de costo: {centro.codigo_contable} - {centro.nombre}",
-                f"Obligacion: {curso.nombre}",
-                f"Emision: {emision.isoformat()}",
-                f"Vencimiento: {vencimiento.isoformat()}",
-                "",
-                f"El respaldo son {curso.constancias} constancias por trabajador",
-                "que no se adjuntaron al sembrar. Las fechas si son las reales,",
-                "leidas de la constancia que caduca primero.",
-            ]
-        )
+            assert constancia.rut is not None
+            trabajador = trabajadores[constancia.rut]
+            if constancia.esta_fechada:
+                assert constancia.fecha_emision is not None
+                assert constancia.fecha_vencimiento is not None
+                emisor = EMISOR_PLATAFORMA
+                emision: date = constancia.fecha_emision
+                vencimiento: date = constancia.fecha_vencimiento
+            else:
+                # El escaneo no trae capa de texto. Se carga igual para que
+                # esté a la vista y queda pendiente de validación: la fecha la
+                # lee y la corrige Prevención, persona por persona.
+                emisor = EMISOR_SIN_FECHA
+                emision = hoy
+                vencimiento = hoy
+            evidencia = cargar_evidencia(
+                centro=centro,
+                obligacion=obligaciones[constancia.obligacion],
+                actor=actor,
+                archivo=SimpleUploadedFile(
+                    nombre_archivo(constancia.obligacion, constancia.rut),
+                    constancia.ruta.read_bytes(),
+                    content_type="application/pdf",
+                ),
+                emisor=emisor,
+                fecha_emision=emision,
+                fecha_vencimiento=vencimiento,
+                trabajador=trabajador,
+                canal=CANAL,
+            )
+            if constancia.esta_fechada:
+                validar_evidencia(evidencia=evidencia, actor=actor, canal=CANAL)
 
     # --- salida -----------------------------------------------------------
 
     def _anunciar(
         self,
         respaldo: RespaldoBodega,
-        archivos: dict[str, list[Constancia]],
+        constancias: list[Constancia],
     ) -> None:
-        hoy = timezone.localdate()
         self.stdout.write(
             f"Centro de costo: {respaldo.codigo_contable} — {respaldo.nombre}"
         )
+        personas = self._personas(constancias)
         self.stdout.write(
-            f"Respaldo: {respaldo.constancias_totales} constancias de "
-            f"{respaldo.trabajadores_distintos} trabajadores."
+            f"Carpeta: {len(constancias)} constancias de {len(personas)} "
+            "trabajadores, cada una a nombre de su titular."
         )
+        sin_fecha = len([c for c in constancias if not c.esta_fechada])
         self.stdout.write(
-            "Archivos: "
-            + (
-                "las constancias originales."
-                if archivos
-                else "marcadores; no se indicó --carpeta."
-            )
+            f"{sin_fecha} constancias sin fecha legible quedarán pendientes de "
+            "validación, una por persona."
         )
-        self.stdout.write(f"\nEstado que derivaría al {hoy.isoformat()}:\n")
+        self.stdout.write("\nObligaciones que se sembrarían:\n")
         for curso in respaldo.cursos:
             catalogo = CATALOGO[curso.nombre]
-            rige = self._constancia_que_rige(curso, catalogo.periodicidad)
-            if rige is None:
-                detalle = "pendiente de validación (el escaneo no trae fecha)"
-            else:
-                fin = fin_de_vigencia(
-                    fecha_emision=rige[0],
-                    fecha_vencimiento=rige[1],
-                    periodicidad=catalogo.periodicidad,
-                )
-                detalle = (
-                    f"rige la del {rige[0].isoformat()}, "
-                    f"{catalogo.periodicidad.label.lower()} hasta {fin.isoformat()}"
-                )
-            self.stdout.write(f"  {curso.nombre}: {detalle}")
+            self.stdout.write(
+                f"  {curso.nombre}: titular {catalogo.titular.label.lower()}, "
+                f"{self._cuantas(curso, constancias)} constancias"
+            )
         for nombre in SIN_RESPALDO:
-            self.stdout.write(f"  {nombre}: sin evidencia")
+            self.stdout.write(f"  {nombre}: titular centro de costo, sin evidencia")
         for nombre in NO_APLICAN:
-            self.stdout.write(f"  {nombre}: no aplica")
+            self.stdout.write(f"  {nombre}: titular centro de costo, no aplica")
+
+    def _cuantas(self, curso: CursoRespaldado, constancias: list[Constancia]) -> int:
+        return len([c for c in constancias if c.obligacion == curso.nombre])
 
     def _resumir(
         self,
         respaldo: RespaldoBodega,
         centro: CentroCosto,
-        archivos: dict[str, list[Constancia]],
+        constancias: list[Constancia],
     ) -> None:
         total = len(respaldo.cursos) + len(SIN_RESPALDO) + len(NO_APLICAN)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Sembrado {centro.codigo_contable} — {centro.nombre} con "
-                f"{total} obligaciones."
+                f"{total} obligaciones, "
+                f"{len(self._personas(constancias))} trabajadores y "
+                f"{len(constancias)} constancias atribuidas a su titular."
             )
         )
-        if not archivos:
-            self.stdout.write(
-                "Los archivos guardados son marcadores: no se indicó --carpeta. "
-                "Las fechas sí son las reales del respaldo."
-            )
         self.stdout.write(
             "La periodicidad de cada obligación está sin confirmar, y es la que "
             "decide si una constancia aparece vigente o vencida."

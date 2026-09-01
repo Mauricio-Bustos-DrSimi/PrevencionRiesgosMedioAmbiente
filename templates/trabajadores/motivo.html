@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>{{ titulo }}</title></head>
+  <body><main>
+    <h1>{{ titulo }}</h1>
+    <p>{{ trabajador.nombre }} ({{ trabajador.rut }})</p>
+    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+    <form method="post">{% csrf_token %}{% if formulario %}{{ formulario.as_p }}{% endif %}<button type="submit">Confirmar</button></form>
+    <p><a href="{% url 'trabajadores:detalle' trabajador.pk %}">Volver al trabajador</a></p>
+  </main></body>
+</html>

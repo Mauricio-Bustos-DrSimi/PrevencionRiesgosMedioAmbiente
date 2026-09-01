@@ -35,6 +35,23 @@
             {% endfor %}
           </select>
         </label>
+        <label>Centro de costo
+          <select name="centro">
+            <option value="">Todos</option>
+            {% for centro in centros %}
+              {# Se identifica por su código contable oficial, que además no se confunde con el nombre en los resultados. #}
+              <option value="{{ centro.pk }}"{% if centro_seleccionado == centro.pk %} selected{% endif %}>{{ centro.codigo_contable }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Trabajador
+          <select name="trabajador">
+            <option value="">Todos</option>
+            {% for trabajador in trabajadores %}
+              <option value="{{ trabajador.pk }}"{% if trabajador_seleccionado == trabajador.pk %} selected{% endif %}>{{ trabajador.nombre }} ({{ trabajador.rut }})</option>
+            {% endfor %}
+          </select>
+        </label>
         <button type="submit">Filtrar</button>
       </form>
       <ul>
@@ -42,6 +59,9 @@
           <li>
             <a href="{% url 'centros_costo:detalle' caso.centro.pk %}">{{ caso.centro.nombre }}</a>
             — <a href="{% url 'obligaciones:detalle' caso.obligacion.pk %}">{{ caso.nombre_obligacion }}</a>
+            {% if caso.trabajador %}
+              — <a href="{% url 'trabajadores:detalle' caso.trabajador.pk %}">{{ caso.trabajador.nombre }} ({{ caso.trabajador.rut }})</a>
+            {% endif %}
             {% if caso.estado == "No aplica" %}
               — <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Abrir plan de aplicación</a>
             {% elif caso.evidencia %}

@@ -41,6 +41,7 @@ def crear(request: HttpRequest) -> HttpResponse:
                 titular=formulario.cleaned_data["titular"],
                 periodicidad=formulario.cleaned_data["periodicidad"],
                 tipos_centro=formulario.cleaned_data["tipos_centro"],
+                cargos_sugeridos=formulario.cleaned_data["cargos_sugeridos"],
                 tipo_version=TipoVersion.ALTA,
                 autor=actor,
                 motivo=formulario.cleaned_data["motivo"],
@@ -87,6 +88,7 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
         "titular": actual.titular,
         "periodicidad": actual.periodicidad,
         "tipos_centro": actual.tipos_centro,
+        "cargos_sugeridos": "\n".join(actual.cargos_sugeridos),
     }
     formulario = FormularioObligacion(request.POST or None, initial=datos_iniciales)
     if request.method == "POST" and formulario.is_valid():
@@ -104,6 +106,7 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
                 titular=formulario.cleaned_data["titular"],
                 periodicidad=formulario.cleaned_data["periodicidad"],
                 tipos_centro=formulario.cleaned_data["tipos_centro"],
+                cargos_sugeridos=formulario.cleaned_data["cargos_sugeridos"],
                 tipo_version=TipoVersion.CORRECCION,
                 autor=actor,
                 motivo=formulario.cleaned_data["motivo"],
@@ -147,6 +150,7 @@ def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
                 titular=actual.titular,
                 periodicidad=actual.periodicidad,
                 tipos_centro=actual.tipos_centro,
+                cargos_sugeridos=actual.cargos_sugeridos,
                 tipo_version=TipoVersion.CIERRE,
                 fecha_cierre=formulario.cleaned_data["fecha_cierre"],
                 autor=actor,

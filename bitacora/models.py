@@ -55,6 +55,13 @@ class EventoBitacora(models.Model):
         blank=True,
         related_name="eventos_bitacora",
     )
+    trabajador = models.ForeignKey(
+        "trabajadores.Trabajador",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="eventos_bitacora",
+    )
 
     objects = EventoBitacoraQuerySet.as_manager()
 

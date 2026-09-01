@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>{{ trabajador.nombre }}</title></head>
+  <body>
+    <main>
+      <p><a href="{% url 'trabajadores:lista' %}">Volver a trabajadores</a></p>
+      <h1>{{ trabajador.nombre }}</h1>
+      <dl>
+        <dt>RUT</dt><dd>{{ trabajador.rut }}</dd>
+        <dt>Cargo</dt><dd>{{ trabajador.cargo }}</dd>
+        <dt>Centro de costo</dt>
+        <dd>{% if centro %}<a href="{% url 'centros_costo:detalle' centro.pk %}">{{ centro.nombre }}</a>{% else %}Dado de baja{% endif %}</dd>
+        <dt>Dotación</dt>
+        <dd>{% if de_baja %}Dado de baja{% elif validado %}Validado{% else %}No validado — no produce cumplimiento{% endif %}</dd>
+      </dl>
+      {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}</p>{% endif %}
+      <form method="get">
+        <label>Fecha histórica
+          <input type="date" name="fecha"{% if fecha %} value="{{ fecha|date:'Y-m-d' }}"{% endif %} required>
+        </label>
+        <button type="submit">Consultar estado pasado</button>
+        {% if fecha %}<a href="{% url 'trabajadores:detalle' trabajador.pk %}">Volver al estado actual</a>{% endif %}
+      </form>
+
+      {% if not fecha %}
+        {% if not validado and not de_baja %}
+          <form method="post" action="{% url 'trabajadores:validar' trabajador.pk %}">
+            {% csrf_token %}<button type="submit">Validar trabajador</button>
+          </form>
+        {% endif %}
+        <p>
+          <a href="{% url 'trabajadores:trasladar' trabajador.pk %}">Trasladar</a>
+          — <a href="{% url 'trabajadores:dar_de_baja' trabajador.pk %}">Dar de baja</a>
+        </p>
+        <h2>Sugerencia según el cargo {{ trabajador.cargo }}</h2>
+        <p>La sugerencia acelera; no decide. La aplicabilidad se confirma persona por persona.</p>
+        <ul>
+          {% for obligacion in sugerencias %}<li>{{ obligacion.version_actual.nombre }}</li>{% empty %}<li>El cargo no tiene obligaciones sugeridas.</li>{% endfor %}
+        </ul>
+        <form method="post" action="{% url 'trabajadores:confirmar_sugerencia' trabajador.pk %}">
+          {% csrf_token %}<label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Confirmar plan sugerido</button>
+        </form>
+      {% endif %}
+
+      <h2>Obligaciones del trabajador</h2>
+      <ul>
+        {% for item in items %}
+          <li>{% if item.caso %}{{ item.caso.nombre_obligacion }}{% else %}{{ item.obligacion.version_actual.nombre }}{% endif %} —
+            {% if item.caso %}{{ item.caso.estado }}{% else %}Sin configurar{% endif %}
+            {% if item.caso.fecha_fin %} — vigencia hasta {{ item.caso.fecha_fin }}{% endif %}
+            {% if item.caso.evidencia %}
+              <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
+            {% endif %}
+            {% if item.cambio and item.cambio.aplica and not fecha and centro %}
+              <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
+            {% endif %}
+          </li>
+        {% empty %}<li>El plan de este trabajador está vacío.</li>{% endfor %}
+      </ul>
+
+      {% if not fecha %}
+        <h2>Agregar o excluir una obligación</h2>
+        <form method="post" action="{% url 'trabajadores:agregar' trabajador.pk %}">
+          {% csrf_token %}<label>Obligación <select name="obligacion" required>
+            {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
+          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Agregar al plan</button>
+        </form>
+        <form method="post" action="{% url 'trabajadores:no_aplica' trabajador.pk %}">
+          {% csrf_token %}<label>Obligación <select name="obligacion" required>
+            {% for item in items %}<option value="{{ item.obligacion.pk }}">{{ item.obligacion.version_actual.nombre }}</option>{% endfor %}
+          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+          <button type="submit">Declarar No aplica</button>
+        </form>
+      {% endif %}
+
+      <h2>Historial de aplicabilidad</h2>
+      <ul>{% for cambio in cambios %}<li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {{ cambio.obligacion.version_actual.nombre }} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>{% empty %}<li>Sin cambios registrados.</li>{% endfor %}</ul>
+
+      <h2>Historial de la dotación</h2>
+      <ul>{% for asignacion in asignaciones %}<li>{{ asignacion.ocurrido_en }} — {{ asignacion.autor.username }} — {{ asignacion.get_tipo_display }} — {% if asignacion.centro_costo %}{{ asignacion.centro_costo.nombre }}{% else %}sin centro de costo{% endif %} — {{ asignacion.motivo }}</li>{% endfor %}</ul>
+    </main>
+  </body>
+</html>

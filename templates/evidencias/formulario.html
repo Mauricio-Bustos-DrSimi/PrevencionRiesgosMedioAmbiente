@@ -2,6 +2,10 @@
 <html lang="es">
   <head><meta charset="utf-8"><title>Cargar evidencia</title></head>
   <body><main><h1>Cargar evidencia: {{ obligacion.version_actual.nombre }}</h1>
+    <p>Centro de costo: {{ centro.nombre }}</p>
+    {% if es_del_trabajador %}
+      <p>Esta obligación es del trabajador: la evidencia acredita a una persona, no a la instalación.</p>
+    {% endif %}
     {% if error %}<p role="alert">{{ error }}</p>{% endif %}
     <form method="post" enctype="multipart/form-data">{% csrf_token %}{{ formulario.as_p }}<button type="submit">Cargar evidencia</button></form>
   </main></body>

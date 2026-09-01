@@ -22,6 +22,16 @@ def es_operador_mvp(usuario: AbstractBaseUser | AnonymousUser) -> bool:
     ).exists()
 
 
+def exigir_prevencionista(actor: User, accion: str) -> None:
+    """Los actos que solo le tocan a Prevención se hacen valer en el servidor.
+
+    Ocultar un botón prueba la pantalla; lo que tiene que quedar demostrado es
+    que el acto se rechaza aunque se envíe el formulario directamente.
+    """
+    if not actor.groups.filter(name=GRUPO_PREVENCIONISTA).exists():
+        raise PermissionDenied(f"Solo un Prevencionista puede {accion}.")
+
+
 def requiere_operador_mvp(
     vista: Callable[Parametros, Respuesta],
 ) -> Callable[Parametros, Respuesta]:

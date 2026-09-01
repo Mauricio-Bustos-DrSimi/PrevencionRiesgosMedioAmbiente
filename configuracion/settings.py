@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "bitacora.apps.BitacoraConfig",
     "centros_costo.apps.CentrosCostoConfig",
     "obligaciones.apps.ObligacionesConfig",
+    "trabajadores.apps.TrabajadoresConfig",
     "planes_aplicacion.apps.PlanesAplicacionConfig",
     "importaciones.apps.ImportacionesConfig",
     "evidencias.apps.EvidenciasConfig",

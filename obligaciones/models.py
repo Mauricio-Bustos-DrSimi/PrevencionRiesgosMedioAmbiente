@@ -9,6 +9,17 @@ from django.db import models
 MENSAJE_INMUTABLE = "Las obligaciones y sus versiones no se pueden modificar ni eliminar."
 
 
+def cargos_escritos(texto: str | list[str]) -> list[str]:
+    """Lee los cargos sugeridos tal como se escriben: uno por línea.
+
+    Vacío significa todos, igual que en los tipos de centro. Lo comparten el
+    formulario propio y el del panel administrativo, que ofrecen el mismo campo.
+    """
+    if isinstance(texto, list):
+        return texto
+    return [linea.strip() for linea in texto.splitlines() if linea.strip()]
+
+
 class TitularObligacion(models.TextChoices):
     CENTRO_COSTO = "centro_costo", "Centro de costo"
     TRABAJADOR = "trabajador", "Trabajador"
@@ -49,7 +60,16 @@ class Obligacion(models.Model):
 
     @property
     def version_actual(self) -> "VersionObligacion":
-        return self.versiones.latest("numero")
+        # Se resuelve sobre las versiones ya cargadas para que
+        # `prefetch_related("versiones")` sirva de algo: recorrer un catálogo
+        # entero preguntando por la versión de cada obligación es una consulta
+        # por obligación, y el plan de un centro las pide todas.
+        versiones = list(self.versiones.all())
+        if not versiones:
+            raise VersionObligacion.DoesNotExist(
+                "La obligación todavía no tiene ninguna versión."
+            )
+        return max(versiones, key=lambda version: version.numero)
 
     @property
     def esta_vigente(self) -> bool:
@@ -87,6 +107,11 @@ class VersionObligacion(models.Model):
         default=list,
         blank=True,
         help_text="Tipos de centro sugeridos; vacío significa todos.",
+    )
+    cargos_sugeridos = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Cargos sugeridos; vacío significa todos.",
     )
     tipo_version = models.CharField(max_length=20, choices=TipoVersion.choices)
     fecha_cierre = models.DateField(null=True, blank=True)

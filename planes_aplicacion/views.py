@@ -10,10 +10,17 @@ from django.utils import timezone
 from acceso.permisos import requiere_operador_mvp
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
-from evidencias.services import caso_de_cumplimiento
+from evidencias.services import caso_de_cumplimiento, casos_de_la_dotacion
+from obligaciones.models import Obligacion
+from trabajadores.services import leer_dotacion
 from .forms import CambioAplicabilidadForm, MotivoAplicabilidadForm
 from .models import CambioAplicabilidad
-from .services import cambios_del_plan, estado_actual, obligaciones_sugeridas
+from .services import (
+    cambios_del_plan,
+    estado_actual,
+    obligaciones_de_la_dotacion,
+    obligaciones_sugeridas,
+)
 
 
 def _centro(pk: int) -> CentroCosto:
@@ -32,16 +39,22 @@ def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
         )
     sugerencias = obligaciones_sugeridas(centro)
     cambios = cambios_del_plan(centro, hasta=fecha)
+    fecha_estado = fecha or timezone.localdate()
     if fecha is None:
-        obligaciones = sugerencias
-        fecha_estado = timezone.localdate()
+        obligaciones = {obligacion.pk: obligacion for obligacion in sugerencias}
     else:
-        obligaciones_por_pk = {
+        obligaciones = {
             cambio.obligacion_id: cambio.obligacion
             for cambio in cambios
         }
-        obligaciones = list(obligaciones_por_pk.values())
-        fecha_estado = fecha
+    # Las obligaciones de titular trabajador entran al plan del centro por la
+    # dotación, no por un cambio de aplicabilidad del centro: el centro no es
+    # su titular, pero sí la vista de trabajo donde se ven.
+    for obligacion in obligaciones_de_la_dotacion(centro, en_fecha=fecha):
+        obligaciones.setdefault(obligacion.pk, obligacion)
+    # La dotación se lee una vez y se comparte entre todas las obligaciones del
+    # plan: resolverla por obligación son cientos de consultas por pantalla.
+    dotacion = leer_dotacion(en_fecha=fecha)
     items = [
         {
             "obligacion": obligacion,
@@ -50,9 +63,10 @@ def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
                 centro=centro,
                 obligacion=obligacion,
                 en_fecha=fecha_estado,
+                dotacion=dotacion,
             ),
         }
-        for obligacion in obligaciones
+        for obligacion in obligaciones.values()
     ]
     return render(
         request,
@@ -63,6 +77,44 @@ def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
             "items": items,
             "cambios": cambios,
             "fecha": fecha,
+        },
+    )
+
+
+@requiere_operador_mvp
+def desglose(
+    request: HttpRequest,
+    centro_pk: int,
+    obligacion_pk: int,
+) -> HttpResponse:
+    """Quiénes son las personas que hay detrás del estado agregado."""
+    centro = _centro(centro_pk)
+    obligacion = get_object_or_404(Obligacion, pk=obligacion_pk)
+    fecha_parametro = request.GET.get("fecha")
+    try:
+        fecha = date.fromisoformat(fecha_parametro) if fecha_parametro else None
+    except ValueError:
+        return HttpResponseBadRequest(
+            "La fecha histórica debe usar el formato AAAA-MM-DD."
+        )
+    fecha_estado = fecha or timezone.localdate()
+    return render(
+        request,
+        "planes_aplicacion/desglose.html",
+        {
+            "centro": centro,
+            "obligacion": obligacion,
+            "fecha": fecha,
+            "agregado": caso_de_cumplimiento(
+                centro=centro,
+                obligacion=obligacion,
+                en_fecha=fecha_estado,
+            ),
+            "casos": casos_de_la_dotacion(
+                centro=centro,
+                obligacion=obligacion,
+                en_fecha=fecha_estado,
+            ),
         },
     )
 

@@ -266,6 +266,53 @@ class CargaEvidenciaHttpTests(TestCase):
         self.assertEqual(respuesta.status_code, 403)
         self.assertContains(respuesta, "No aplica", status_code=403)
 
+    def test_los_titulares_no_implementados_se_rechazan_explicitamente(self) -> None:
+        """Externo y empresa son pasos posteriores; no se aceptan por omisión.
+
+        Aceptarlos como si fueran del centro de costo repetiría el error que
+        ADR 0004 vino a corregir: acreditar contra un titular que no es el suyo.
+        """
+        for titular in ("externo", "empresa"):
+            with self.subTest(titular=titular):
+                obligacion = Obligacion.objects.create()
+                VersionObligacion.objects.create(
+                    obligacion=obligacion,
+                    numero=1,
+                    nombre=f"Obligación de {titular}",
+                    norma_origen="Ley 20.123",
+                    titular=titular,
+                    periodicidad="anual",
+                    tipo_version=TipoVersion.ALTA,
+                    autor=self.usuario,
+                    motivo="Alta de prueba",
+                )
+                self.client.post(
+                    reverse("planes_aplicacion:agregar", args=[self.centro.pk]),
+                    {"obligacion": str(obligacion.pk), "motivo": "Aplicación"},
+                )
+
+                respuesta = self.client.post(
+                    reverse(
+                        "evidencias:cargar",
+                        args=[self.centro.pk, obligacion.pk],
+                    ),
+                    {
+                        "emisor": "Organismo certificador",
+                        "fecha_emision": "2026-08-01",
+                        "fecha_vencimiento": "2027-08-01",
+                        "archivo": self._archivo(),
+                    },
+                )
+
+                self.assertContains(
+                    respuesta,
+                    "todavía no se puede acreditar en el sistema",
+                    status_code=403,
+                )
+                self.assertFalse(
+                    Evidencia.objects.filter(obligacion=obligacion).exists()
+                )
+
     def test_fallo_de_almacenamiento_no_deja_evidencia_parcial(self) -> None:
         with patch("django.core.files.storage.default_storage.save", side_effect=OSError("disco lleno")):
             respuesta = self.client.post(

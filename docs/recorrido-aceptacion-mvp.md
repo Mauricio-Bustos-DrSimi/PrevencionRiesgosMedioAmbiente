@@ -26,17 +26,42 @@ usuario ve:
    acto una obligación se declara *No aplica*: deja de ofrecer carga de
    evidencia y, si el formulario se envía igual, el servidor la rechaza sin
    registrar nada.
-5. **Paso del tiempo.** Con el reloj simulado, la misma evidencia recorre
-   *Vigente* → *Por vencer* → *Vencido* en la bandeja de vencimientos, sin que
-   nadie edite el estado.
-6. **Renovación.** Una evidencia nueva restablece *Vigente*, la anterior sigue
-   consultable y su archivo sigue en disco.
-7. **Reconstrucción histórica.** La consulta por fecha pasada reproduce, para
-   cada momento del ciclo, el estado de cumplimiento y la aplicabilidad que
-   correspondían entonces.
-8. **Bitácora e integridad.** El recorrido de trazabilidad explica qué ocurrió,
-   quién actuó, cómo y cuándo, en ambos canales; la verificación SHA-256
-   confirma los archivos intactos y **detecta uno alterado**.
+5. **El trabajador como titular.** Se da de alta a dos personas con su RUT y su
+   cargo; nacen **no validadas** y Prevención las incorpora. El plan individual
+   de cada una se confirma persona por persona, partiendo de la sugerencia del
+   cargo. Se comprueba que el mismo RUT escrito con puntos queda guardado en
+   una sola forma canónica.
+6. **Carga a nombre de una persona.** Una licencia de conducir no es de la
+   farmacia. El intento de cargarla **sin indicar a quién acredita se rechaza**
+   con ese motivo; con la persona indicada, la evidencia queda a su nombre y la
+   bandeja de pendientes dice a quién citar.
+7. **Corrección de fechas al validar.** El escaneo no declaraba sus fechas.
+   Prevención las lee del papel y las escribe en el mismo envío en que valida:
+   quedan **dos actos separados** en la bitácora, el archivo y su hash siguen
+   siendo los de la carga, y la vigencia pasa a derivarse del dato confirmado.
+   La pantalla muestra la fecha con que se cargó y la corregida.
+8. **Estado agregado y desglose.** El plan del centro muestra, para esa
+   obligación, el **peor estado presente** con su recuento —«Sin evidencia — 1
+   de 2 trabajadores; Vigente: 1»— y desde ahí se abre el desglose por persona.
+   La que sí tiene su licencia no esconde a la que no.
+9. **Paso del tiempo.** Con el reloj simulado, la evidencia del centro y la de
+   la persona recorren *Vigente* → *Por vencer* → *Vencido* en la bandeja de
+   vencimientos, sin que nadie edite el estado. La bandeja identifica a la
+   persona y se puede filtrar por ella.
+10. **Renovación.** Una evidencia nueva restablece *Vigente* en los dos granos,
+    la anterior sigue consultable y su archivo sigue en disco.
+11. **Reconstrucción histórica.** La consulta por fecha pasada reproduce, para
+    cada momento del ciclo, el estado de cumplimiento y la aplicabilidad que
+    correspondían entonces.
+12. **Traslado y baja.** La persona se traslada a otro centro de costo: deja de
+    contar en el agregado del origen y cuenta en el del destino, pero lo que
+    acreditó donde estaba sigue asociado a ese centro, y **la consulta a una
+    fecha pasada usa la dotación de esa fecha**, no la de hoy. La baja es un
+    cierre con motivo: deja de exigirse y no se borra nada.
+13. **Bitácora e integridad.** El recorrido de trazabilidad explica qué ocurrió,
+    quién actuó, cómo y cuándo, en ambos canales; el alta del trabajador, la
+    corrección y la validación se leen como actos distintos; la verificación
+    SHA-256 confirma los archivos intactos y **detecta uno alterado**.
 
 ## Cómo repetir la demostración
 
@@ -63,7 +88,7 @@ Para dejar toda la suite verde antes de ampliar el piloto:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py test
-.\.venv\Scripts\python.exe -m mypy acceso aceptacion bitacora centros_costo configuracion evidencias importaciones obligaciones planes_aplicacion manage.py
+.\.venv\Scripts\python.exe -m mypy acceso aceptacion bitacora centros_costo configuracion evidencias importaciones obligaciones planes_aplicacion trabajadores manage.py
 ```
 
 ## Por qué exige PostgreSQL

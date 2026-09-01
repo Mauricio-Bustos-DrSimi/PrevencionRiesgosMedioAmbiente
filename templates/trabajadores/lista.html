@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="utf-8"><title>Trabajadores</title></head>
+  <body>
+    <main>
+      <h1>Trabajadores</h1>
+      <p><a href="{% url 'trabajadores:crear' %}">Registrar trabajador</a></p>
+      <ul>
+        {% for fila in trabajadores %}
+          <li>
+            <a href="{% url 'trabajadores:detalle' fila.trabajador.pk %}">{{ fila.trabajador.nombre }} ({{ fila.trabajador.rut }})</a>
+            — {{ fila.trabajador.cargo }}
+            — {% if fila.centro %}<a href="{% url 'centros_costo:detalle' fila.centro.pk %}">{{ fila.centro.nombre }}</a>{% else %}Dado de baja{% endif %}
+            — {% if fila.validado %}Validado{% else %}No validado{% endif %}
+          </li>
+        {% empty %}<li>No hay trabajadores registrados.</li>{% endfor %}
+      </ul>
+    </main>
+  </body>
+</html>

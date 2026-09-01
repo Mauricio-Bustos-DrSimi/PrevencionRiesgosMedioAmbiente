@@ -10,6 +10,11 @@
             <a href="{% url 'evidencias:validar' evidencia.pk %}">
               {{ evidencia.centro_costo.nombre }} — {{ evidencia.nombre_obligacion }}
             </a>
+            {% if evidencia.trabajador %}
+              — <a href="{% url 'trabajadores:detalle' evidencia.trabajador.pk %}">{{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }})</a>
+            {% else %}
+              — Centro de costo
+            {% endif %}
             — Pendiente de validación
           </li>
         {% empty %}
