@@ -164,8 +164,9 @@ class BandejaVencimientosHttpTests(TestCase):
             )
 
         self.assertContains(vencido, "Farmacia Vencimientos")
-        self.assertContains(vencido, "— Vencido —")
-        self.assertNotContains(vencido, "— Por vencer —")
+        self.assertContains(vencido, 'class="estado estado--vencido"')
+        self.assertContains(vencido, "Vencido")
+        self.assertNotContains(vencido, 'class="estado estado--por-vencer"')
         self.assertContains(detalle_vencido, "Vencido")
         self.assertNotContains(detalle_vencido, "Fuera de la ventana calculada")
 
@@ -274,7 +275,8 @@ class BandejaVencimientosHttpTests(TestCase):
                 reverse("evidencias:validar", args=[evidencia_futura.pk])
             )
 
-        self.assertContains(bandeja, "— Por vencer —")
+        self.assertContains(bandeja, 'class="estado estado--por-vencer"')
+        self.assertContains(bandeja, "Por vencer")
         self.assertContains(
             bandeja,
             reverse("evidencias:validar", args=[evidencia_actual.pk]),

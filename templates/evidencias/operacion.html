@@ -1,80 +1,74 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Operación del piloto</title></head>
-  <body>
-    <main>
-      <h1>Operación del piloto</h1>
-      <p>{{ cantidad_centros }} centros de costo operables</p>
-      {% if piloto_conforme %}
-        <p>Piloto conforme</p>
-      {% else %}
-        <p>El piloto debe contener entre 8 y 10 centros de costo, con varias farmacias, un centro administrativo y una bodega.</p>
-      {% endif %}
-      <form method="get">
-        <label>Estado de cumplimiento
-          <select name="estado">
-            <option value="">Todos</option>
-            {% for valor, nombre in estados %}
-              <option value="{{ valor }}"{% if estado_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Tipo de centro de costo
-          <select name="tipo_centro">
-            <option value="">Todos</option>
-            {% for valor, nombre in tipos_centro %}
-              <option value="{{ valor }}"{% if tipo_centro_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Obligación
-          <select name="obligacion">
-            <option value="">Todas</option>
-            {% for obligacion in obligaciones %}
-              <option value="{{ obligacion.pk }}"{% if obligacion_seleccionada == obligacion.pk %} selected{% endif %}>{{ obligacion.version_actual.nombre }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Centro de costo
-          <select name="centro">
-            <option value="">Todos</option>
-            {% for centro in centros %}
-              {# Se identifica por su código contable oficial, que además no se confunde con el nombre en los resultados. #}
-              <option value="{{ centro.pk }}"{% if centro_seleccionado == centro.pk %} selected{% endif %}>{{ centro.codigo_contable }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label>Trabajador
-          <select name="trabajador">
-            <option value="">Todos</option>
-            {% for trabajador in trabajadores %}
-              <option value="{{ trabajador.pk }}"{% if trabajador_seleccionado == trabajador.pk %} selected{% endif %}>{{ trabajador.nombre }} ({{ trabajador.rut }})</option>
-            {% endfor %}
-          </select>
-        </label>
-        <button type="submit">Filtrar</button>
-      </form>
-      <ul>
-        {% for caso in casos %}
-          <li>
-            <a href="{% url 'centros_costo:detalle' caso.centro.pk %}">{{ caso.centro.nombre }}</a>
-            — <a href="{% url 'obligaciones:detalle' caso.obligacion.pk %}">{{ caso.nombre_obligacion }}</a>
-            {% if caso.trabajador %}
-              — <a href="{% url 'trabajadores:detalle' caso.trabajador.pk %}">{{ caso.trabajador.nombre }} ({{ caso.trabajador.rut }})</a>
-            {% endif %}
-            {% if caso.estado == "No aplica" %}
-              — <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Abrir plan de aplicación</a>
-            {% elif caso.evidencia %}
-              — <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
-            {% else %}
-              — <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">Cargar evidencia</a>
-            {% endif %}
-            — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
-          </li>
-        {% empty %}
-          <li>No hay obligaciones configuradas en el piloto.</li>
-        {% endfor %}
-      </ul>
-    </main>
-  </body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+{% load presentacion %}
+
+{% block title %}Operación del piloto{% endblock %}
+
+{% block content %}
+  <section class="tarjeta" aria-labelledby="composicion-piloto-titulo">
+    <h2 id="composicion-piloto-titulo">Composición del piloto</h2>
+    <p><strong class="numero-tabular">{{ cantidad_centros }}</strong> centros de costo operables</p>
+    {% if piloto_conforme %}
+      <p><strong>Piloto conforme.</strong> La composición cumple el alcance configurado.</p>
+    {% else %}
+      <p>El piloto debe contener entre 8 y 10 centros de costo, con varias farmacias, un centro administrativo y una bodega.</p>
+    {% endif %}
+    <p class="texto-secundario">Esta composición no implica aceptación operativa, calidad normativa ni validación de documentos.</p>
+  </section>
+
+  {% include "evidencias/includes/filtros_operacion.html" %}
+
+  <section class="tarjeta" aria-labelledby="casos-operacion-titulo">
+    <h2 id="casos-operacion-titulo">Casos de cumplimiento</h2>
+    <div class="tabla-desplazable" tabindex="0" aria-label="Casos de cumplimiento filtrados">
+      <table class="tabla-datos tabla-datos--ancha">
+        <caption>{{ casos|length }} {% if casos|length == 1 %}caso{% else %}casos{% endif %} titular–obligación para los filtros seleccionados</caption>
+        <thead>
+          <tr>
+            <th scope="col">Centro</th>
+            <th scope="col">Obligación</th>
+            <th scope="col">Titular</th>
+            <th scope="col">Trabajador</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Vigencia hasta</th>
+            <th scope="col">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for caso in casos %}
+            <tr>
+              <td><a href="{% url 'centros_costo:detalle' caso.centro.pk %}">{{ caso.centro.codigo_contable }} — {{ caso.centro.nombre }}</a></td>
+              <td><a href="{% url 'obligaciones:detalle' caso.obligacion.pk %}">{{ caso.nombre_obligacion }}</a></td>
+              <td>{% if caso.trabajador %}Trabajador{% else %}Centro de costo{% endif %}</td>
+              <td>
+                {% if caso.trabajador %}
+                  <a href="{% url 'trabajadores:detalle' caso.trabajador.pk %}">{{ caso.trabajador.nombre }} ({{ caso.trabajador.rut|rut_oculto }})</a>
+                {% else %}
+                  <span aria-label="No corresponde">—</span>
+                {% endif %}
+              </td>
+              <td>{% include "includes/estado_cumplimiento.html" with estado=caso.estado only %}</td>
+              <td>
+                {% if caso.fecha_fin %}
+                  <time datetime="{{ caso.fecha_fin|date:'Y-m-d' }}">{{ caso.fecha_fin|date:"d/m/Y" }}</time>
+                {% else %}
+                  <span aria-label="Sin fecha de vigencia">—</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if caso.estado == "No aplica" %}
+                  <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Abrir plan de aplicación</a>
+                {% elif caso.evidencia %}
+                  <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
+                {% else %}
+                  <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">Cargar evidencia</a>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7">No hay obligaciones configuradas en el piloto.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

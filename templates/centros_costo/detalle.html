@@ -1,22 +1,17 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ centro_costo.codigo_contable }}</title>
-  </head>
-  <body>
-    <main>
-      <p><a href="{% url 'centros_costo:lista' %}">Volver a centros de costo</a></p>
-      <h1>{{ centro_costo.nombre }}</h1>
-      <dl>
-        <dt>Código contable oficial</dt>
-        <dd>{{ centro_costo.codigo_contable }}</dd>
-        <dt>Tipo</dt>
-        <dd>{{ centro_costo.get_tipo_display }}</dd>
-        <dt>CveUnidad</dt>
-        <dd>{{ centro_costo.cve_unidad|default:"—" }}</dd>
-      </dl>
-    </main>
-  </body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}{{ centro_costo.codigo_contable }}{% endblock %}
+{% block page_title %}{{ centro_costo.nombre }}{% endblock %}
+
+{% block content %}
+  <div class="acciones-pagina"><a class="boton boton--secundario" href="{% url 'centros_costo:lista' %}">Volver a centros de costo</a></div>
+
+        <dl class="ficha-datos tarjeta">
+          <dt>Código contable oficial</dt>
+          <dd>{{ centro_costo.codigo_contable }}</dd>
+          <dt>Tipo</dt>
+          <dd>{{ centro_costo.get_tipo_display }}</dd>
+          <dt>CveUnidad</dt>
+          <dd>{{ centro_costo.cve_unidad|default:"—" }}</dd>
+        </dl>
+{% endblock %}

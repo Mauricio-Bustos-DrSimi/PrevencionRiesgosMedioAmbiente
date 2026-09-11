@@ -1,0 +1,116 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color: var(--color-text);
+  background: var(--color-page);
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--color-text);
+  background: var(--color-page);
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+a {
+  color: var(--color-primary);
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--color-primary-hover);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h1 {
+  margin-bottom: var(--space-5);
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+}
+
+h2 {
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-h2);
+  font-weight: 600;
+}
+
+h3 {
+  margin-bottom: var(--space-3);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+.texto-secundario {
+  color: var(--color-muted);
+}
+
+.numero-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.solo-lectores-pantalla {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.saltar-contenido {
+  position: fixed;
+  z-index: 1000;
+  top: var(--space-2);
+  left: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--color-surface);
+  background: var(--color-primary);
+  transform: translateY(-200%);
+}
+
+.saltar-contenido:focus {
+  color: var(--color-surface);
+  outline-color: var(--color-surface);
+  transform: translateY(0);
+}

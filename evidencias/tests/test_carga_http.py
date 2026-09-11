@@ -111,6 +111,22 @@ class CargaEvidenciaHttpTests(TestCase):
         self.assertContains(detalle, "No cumplida")
         self.assertContains(detalle, "Validar evidencia")
 
+    def test_sysadmin_no_ve_acciones_reservadas_a_prevencion(self) -> None:
+        evidencia = self._cargar_evidencia()
+        sysadmin = get_user_model().objects.create_superuser(
+            username="sysadmin_solo_lectura",
+            password="clave-segura-de-prueba",
+        )
+        self.client.force_login(sysadmin)
+
+        detalle = self.client.get(
+            reverse("evidencias:validar", args=[evidencia.pk]),
+        )
+
+        self.assertEqual(detalle.status_code, 200)
+        self.assertNotContains(detalle, ">Validar evidencia</button>")
+        self.assertNotContains(detalle, "Registrar corrección de fechas")
+
     def test_validacion_deriva_vigente_y_registra_identidad_y_bitacora(self) -> None:
         evidencia = self._cargar_evidencia()
         momento_validacion = datetime(

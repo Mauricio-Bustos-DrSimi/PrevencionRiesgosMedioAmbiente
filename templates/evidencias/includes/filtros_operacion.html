@@ -1,0 +1,64 @@
+{% load presentacion %}
+<form class="filtros tarjeta" method="get" action="{% url 'evidencias:operacion' %}" aria-labelledby="filtros-operacion-titulo">
+  <h2 id="filtros-operacion-titulo">Filtros</h2>
+  <div class="filtros__campos">
+    <div class="campo">
+      <label for="filtro-estado">Estado de cumplimiento</label>
+      <select id="filtro-estado" name="estado">
+        <option value="">Todos</option>
+        {% for valor, nombre in estados %}
+          <option value="{{ valor }}"{% if estado_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-tipo-centro">Tipo de centro de costo</label>
+      <select id="filtro-tipo-centro" name="tipo_centro">
+        <option value="">Todos</option>
+        {% for valor, nombre in tipos_centro %}
+          <option value="{{ valor }}"{% if tipo_centro_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-obligacion">Obligación</label>
+      <select id="filtro-obligacion" name="obligacion">
+        <option value="">Todas</option>
+        {% for obligacion in obligaciones %}
+          <option value="{{ obligacion.pk }}"{% if obligacion_seleccionada == obligacion.pk %} selected{% endif %}>{{ obligacion.version_actual.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-centro">Centro de costo</label>
+      <select id="filtro-centro" name="centro">
+        <option value="">Todos</option>
+        {% for centro in centros %}
+          <option value="{{ centro.pk }}"{% if centro_seleccionado == centro.pk %} selected{% endif %}>{{ centro.codigo_contable }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-titular">Titular</label>
+      <select id="filtro-titular" name="titular">
+        <option value="">Todos</option>
+        {% for valor, nombre in titulares %}
+          <option value="{{ valor }}"{% if titular_seleccionado == valor %} selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="filtro-trabajador">Trabajador</label>
+      <select id="filtro-trabajador" name="trabajador">
+        <option value="">Todos</option>
+        {% for trabajador in trabajadores %}
+          <option value="{{ trabajador.pk }}"{% if trabajador_seleccionado == trabajador.pk %} selected{% endif %}>{{ trabajador.nombre }} ({{ trabajador.rut|rut_oculto }})</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  <div class="filtros__acciones">
+    <button class="boton boton--primario" type="submit">Filtrar</button>
+    <a class="boton boton--secundario" href="{% url 'evidencias:operacion' %}">Limpiar</a>
+  </div>
+</form>

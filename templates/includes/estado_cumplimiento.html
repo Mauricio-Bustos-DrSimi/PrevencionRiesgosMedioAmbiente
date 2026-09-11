@@ -1,0 +1,15 @@
+{% if estado == "Vigente" %}
+  <span class="estado estado--vigente"><span aria-hidden="true">●</span><span>Vigente</span></span>
+{% elif estado == "Por vencer" %}
+  <span class="estado estado--por-vencer"><span aria-hidden="true">▲</span><span>Por vencer</span></span>
+{% elif estado == "Vencido" %}
+  <span class="estado estado--vencido"><span aria-hidden="true">■</span><span>Vencido</span></span>
+{% elif estado == "Pendiente de validación" %}
+  <span class="estado estado--pendiente"><span aria-hidden="true">◆</span><span>Pendiente de validación</span></span>
+{% elif estado == "Sin evidencia" %}
+  <span class="estado estado--sin-evidencia"><span aria-hidden="true">○</span><span>Sin evidencia</span></span>
+{% elif estado == "No aplica" %}
+  <span class="estado estado--no-aplica"><span aria-hidden="true">—</span><span>No aplica</span></span>
+{% else %}
+  <span class="estado"><span aria-hidden="true">?</span><span>{{ estado|default:"Estado no informado" }}</span></span>
+{% endif %}

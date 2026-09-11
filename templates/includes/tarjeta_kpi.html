@@ -1,0 +1,27 @@
+<article class="tarjeta tarjeta-kpi{% if variante %} tarjeta-kpi--{{ variante }}{% endif %}" aria-label="{{ etiqueta }}">
+  <h2 class="tarjeta-kpi__titulo">{{ etiqueta }}</h2>
+  <div class="tarjeta-kpi__recuentos">
+    {% if url_centros %}
+      <a class="tarjeta-kpi__recuento" href="{{ url_centros }}" aria-label="{{ cantidad_centros|default:0 }} instalaciones: {{ etiqueta }}">
+        <strong class="tarjeta-kpi__numero numero-tabular">{{ cantidad_centros|default:0 }}</strong>
+        <span>instalaciones</span>
+      </a>
+    {% else %}
+      <span class="tarjeta-kpi__recuento">
+        <strong class="tarjeta-kpi__numero numero-tabular">{{ cantidad_centros|default:0 }}</strong>
+        <span>instalaciones</span>
+      </span>
+    {% endif %}
+    {% if url_trabajadores %}
+      <a class="tarjeta-kpi__recuento" href="{{ url_trabajadores }}" aria-label="{{ cantidad_trabajadores|default:0 }} trabajadores: {{ etiqueta }}">
+        <strong class="tarjeta-kpi__numero numero-tabular">{{ cantidad_trabajadores|default:0 }}</strong>
+        <span>trabajadores</span>
+      </a>
+    {% else %}
+      <span class="tarjeta-kpi__recuento">
+        <strong class="tarjeta-kpi__numero numero-tabular">{{ cantidad_trabajadores|default:0 }}</strong>
+        <span>trabajadores</span>
+      </span>
+    {% endif %}
+  </div>
+</article>

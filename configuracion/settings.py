@@ -60,6 +60,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "acceso.context_processors.contexto_visual",
             ],
         },
     },
@@ -100,6 +101,7 @@ USE_TZ = True
 DIAS_POR_VENCER = int(os.environ.get("DIAS_POR_VENCER", "30"))
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # Los archivos de evidencia viven en disco del servidor y su hash queda en la
 # base. Sin este valor explícito, Django los escribiría en el directorio de

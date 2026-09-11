@@ -1,19 +1,24 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Iniciar sesión</title>
-  </head>
-  <body>
-    <main>
-      <h1>Iniciar sesión</h1>
-      <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-        <button type="submit">Ingresar</button>
-      </form>
-    </main>
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Iniciar sesión{% endblock %}
+
+{% block body %}
+  <main class="pagina-acceso" id="contenido-principal" tabindex="-1">
+    <section class="acceso-tarjeta" aria-labelledby="inicio-sesion-titulo">
+      <div class="acceso-marca">
+        <span class="acceso-marca__nombre">Prevención de Riesgos y Medio Ambiente</span>
+        <span class="acceso-marca__descripcion">Control de obligaciones, evidencias y vigencias</span>
+      </div>
+      <div class="acceso-formulario">
+        <h1 id="inicio-sesion-titulo">Iniciar sesión</h1>
+        <p class="texto-secundario">Ingresa con tu cuenta autorizada para continuar.</p>
+        <form class="formulario formulario--una-columna" method="post">
+          {% csrf_token %}
+          {{ form.as_p }}
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+          <div class="formulario__acciones"><button class="boton boton--primario" type="submit">Ingresar</button></div>
+        </form>
+      </div>
+    </section>
+  </main>
+{% endblock %}

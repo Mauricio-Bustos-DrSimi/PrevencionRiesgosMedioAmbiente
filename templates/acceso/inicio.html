@@ -1,25 +1,71 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Prevención de Riesgos y Medio Ambiente</title>
-  </head>
-  <body>
-    <header>
-      <p>Usuario: {{ request.user.username }}</p>
-    </header>
-    <main>
-      <h1>Prevención de Riesgos y Medio Ambiente</h1>
-      <p>Gestión de cumplimiento por centro de costo.</p>
-      <nav aria-label="Operación diaria">
-        <ul>
-          <li><a href="{% url 'evidencias:operacion' %}">Operación del piloto</a></li>
-          <li><a href="{% url 'evidencias:vencimientos' %}">Vencimientos y trabajo pendiente</a></li>
-          <li><a href="{% url 'evidencias:pendientes' %}">Evidencias pendientes de validación</a></li>
-          <li><a href="{% url 'trabajadores:lista' %}">Trabajadores</a></li>
-        </ul>
-      </nav>
-    </main>
-  </body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}Resumen de cumplimiento{% endblock %}
+
+{% block content %}
+  <div class="dashboard-encabezado">
+    <p class="texto-secundario">Situación al <time datetime="{{ fecha_referencia|date:'Y-m-d' }}">{{ fecha_referencia|date:"d/m/Y" }}</time>.</p>
+    <p class="aviso-piloto">Este resumen describe la operación del piloto; no constituye aceptación normativa ni validación de documentos.</p>
+  </div>
+
+  <form class="dashboard-filtros tarjeta" method="get" action="{% url 'inicio' %}" aria-labelledby="filtros-portada-titulo">
+    <h2 id="filtros-portada-titulo">Alcance del resumen</h2>
+    <div class="campo">
+      <label for="portada-centro">Centro de costo</label>
+      <select id="portada-centro" name="centro">
+        <option value="">Todos los centros operables</option>
+        {% for centro in centros %}
+          <option value="{{ centro.pk }}"{% if filtros.centro == centro.pk %} selected{% endif %}>{{ centro.codigo_contable }} — {{ centro.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="portada-tipo-centro">Tipo de centro</label>
+      <select id="portada-tipo-centro" name="tipo_centro">
+        <option value="">Todos los tipos</option>
+        {% for valor, etiqueta in tipos_centro %}
+          <option value="{{ valor }}"{% if filtros.tipo_centro == valor %} selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="dashboard-filtros__acciones">
+      <button class="boton boton--primario" type="submit">Filtrar</button>
+      <a class="boton boton--secundario" href="{% url 'inicio' %}">Limpiar</a>
+    </div>
+  </form>
+
+  <section aria-labelledby="prioridades-titulo">
+    <h2 id="prioridades-titulo">Prioridades operativas</h2>
+    <div class="kpi-grid">
+      {% for kpi in kpis %}
+        {% include "includes/tarjeta_kpi.html" with etiqueta=kpi.etiqueta variante=kpi.variante cantidad_centros=kpi.cantidad_centros cantidad_trabajadores=kpi.cantidad_trabajadores url_centros=kpi.url_centros url_trabajadores=kpi.url_trabajadores only %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="resumen-secundario tarjeta" aria-labelledby="totales-titulo">
+    <h2 id="totales-titulo">Contexto del alcance filtrado</h2>
+    <p><strong class="numero-tabular">{{ total_centros }}</strong> {% if total_centros == 1 %}instalación operable filtrada{% else %}instalaciones operables filtradas{% endif %}</p>
+    <p><strong class="numero-tabular">{{ total_trabajadores }}</strong> {% if total_trabajadores == 1 %}trabajador validado con asignación vigente{% else %}trabajadores validados con asignación vigente{% endif %}</p>
+  </section>
+
+  {% if total_casos == 0 %}
+    {% include "includes/estado_vacio.html" with titulo="Sin casos en este alcance" mensaje="No hay obligaciones de instalaciones ni de trabajadores para los filtros seleccionados." only %}
+  {% endif %}
+
+  {% include "acceso/includes/distribucion_estados.html" with distribuciones=distribuciones only %}
+
+  <section class="tarjeta" aria-labelledby="acciones-rapidas-titulo">
+    <h2 id="acciones-rapidas-titulo">Acciones rápidas</h2>
+    <div class="acciones-rapidas">
+      <a class="boton boton--primario" href="{{ url_vencidas }}">Revisar vencidas</a>
+      <a class="boton boton--secundario" href="{{ url_sin_evidencia }}">Resolver sin evidencia</a>
+      {% if capacidades.puede_validar_evidencias %}
+        <a class="boton boton--secundario" href="{% url 'evidencias:pendientes' %}">Validar evidencias</a>
+      {% endif %}
+      {% if capacidades.puede_operar %}
+        <a class="boton boton--secundario" href="{% url 'trabajadores:crear' %}">Registrar trabajador</a>
+      {% endif %}
+    </div>
+  </section>
+{% endblock %}

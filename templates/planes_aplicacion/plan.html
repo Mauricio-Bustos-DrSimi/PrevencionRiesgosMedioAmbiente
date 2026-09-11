@@ -1,64 +1,62 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Plan de aplicación</title></head>
-  <body>
-    <main>
-      <h1>Plan de aplicación — {{ centro.nombre }}</h1>
-      {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}</p>{% endif %}
-      <form method="get">
-        <label>Fecha histórica
-          <input type="date" name="fecha"{% if fecha %} value="{{ fecha|date:'Y-m-d' }}"{% endif %} required>
-        </label>
-        <button type="submit">Consultar estado pasado</button>
-        {% if fecha %}<a href="{% url 'planes_aplicacion:plan' centro.pk %}">Volver al estado actual</a>{% endif %}
-      </form>
-      <p>Tipo de centro de costo: {{ centro.get_tipo_display }}</p>
-      {% if not fecha %}
-        <h2>Sugerencia inicial para {{ centro.get_tipo_display }}</h2>
-        <p>La sugerencia se confirma de forma individual y no se hereda a otros centros.</p>
-        <form method="post" action="{% url 'planes_aplicacion:confirmar_sugerencia' centro.pk %}">
-          {% csrf_token %}<label>Motivo <textarea name="motivo" required></textarea></label>
-          <button type="submit">Confirmar plan sugerido</button>
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}Plan de aplicación{% endblock %}
+{% block page_title %}Plan de aplicación — {{ centro.nombre }}{% endblock %}
+
+{% block content %}
+  {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}</p>{% endif %}
+        <form class="formulario tarjeta" method="get">
+          <label>Fecha histórica
+            <input type="date" name="fecha"{% if fecha %} value="{{ fecha|date:'Y-m-d' }}"{% endif %} required>
+          </label>
+          <button class="boton boton--primario" type="submit">Consultar estado pasado</button>
+          {% if fecha %}<a href="{% url 'planes_aplicacion:plan' centro.pk %}">Volver al estado actual</a>{% endif %}
         </form>
-      {% endif %}
-      <h2>Obligaciones del plan</h2>
-      <ul>
-        {% for item in items %}
-            <li>{% if item.caso %}{{ item.caso.nombre_obligacion }}{% else %}{{ item.obligacion.version_actual.nombre }}{% endif %} —
-              {% if item.caso %}{{ item.caso.estado }}
-              {% else %}Sin configurar{% endif %}
-              {% if item.caso.es_agregado %}
-                — {{ item.caso.cuantos_en_el_estado }} de {{ item.caso.trabajadores_aplicables }} trabajadores
-                ({% for estado, cantidad in item.caso.recuento %}{{ estado }}: {{ cantidad }}{% if not forloop.last %}; {% endif %}{% endfor %})
-                <a href="{% url 'planes_aplicacion:desglose' centro.pk item.obligacion.pk %}{% if fecha %}?fecha={{ fecha|date:'Y-m-d' }}{% endif %}">Ver desglose por persona</a>
-              {% endif %}
-              {% if item.caso.evidencia %}
-                <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
-              {% endif %}
-              <a href="{% url 'bitacora:recorrido' centro.pk item.obligacion.pk %}">Ver trazabilidad</a>
-              {% if item.cambio and item.cambio.aplica and not fecha %}
-                <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
-              {% endif %}
-            </li>
-        {% empty %}<li>No hay obligaciones sugeridas.</li>{% endfor %}
-      </ul>
-      {% if not fecha %}
-        <h2>Agregar o excluir una obligación</h2>
-        <form method="post" action="{% url 'planes_aplicacion:agregar' centro.pk %}">
-          {% csrf_token %}<label>Obligación <select name="obligacion" required>
-            {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
-          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
-          <button type="submit">Agregar al plan</button>
-        </form>
-        <form method="post" action="{% url 'planes_aplicacion:no_aplica' centro.pk %}">
-          {% csrf_token %}<label>Obligación <select name="obligacion" required>
-            {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
-          </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
-          <button type="submit">Declarar No aplica</button>
-        </form>
-      {% endif %}
-      <h2>Historial de aplicabilidad</h2>
-      <ul>{% for cambio in cambios %}<li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>{% empty %}<li>Sin cambios registrados.</li>{% endfor %}</ul>
-    </main>
-  </body>
-</html>
+        <p>Tipo de centro de costo: {{ centro.get_tipo_display }}</p>
+        {% if not fecha %}
+          <h2>Sugerencia inicial para {{ centro.get_tipo_display }}</h2>
+          <p>La sugerencia se confirma de forma individual y no se hereda a otros centros.</p>
+          <form class="formulario tarjeta" method="post" action="{% url 'planes_aplicacion:confirmar_sugerencia' centro.pk %}">
+            {% csrf_token %}<label>Motivo <textarea name="motivo" required></textarea></label>
+            <button class="boton boton--primario" type="submit">Confirmar plan sugerido</button>
+          </form>
+        {% endif %}
+        <h2>Obligaciones del plan</h2>
+        <ul class="lista-datos">
+          {% for item in items %}
+              <li>{% if item.caso %}{{ item.caso.nombre_obligacion }}{% else %}{{ item.obligacion.version_actual.nombre }}{% endif %} —
+                {% if item.caso %}{{ item.caso.estado }}
+                {% else %}Sin configurar{% endif %}
+                {% if item.caso.es_agregado %}
+                  — {{ item.caso.cuantos_en_el_estado }} de {{ item.caso.trabajadores_aplicables }} trabajadores
+                  ({% for estado, cantidad in item.caso.recuento %}{{ estado }}: {{ cantidad }}{% if not forloop.last %}; {% endif %}{% endfor %})
+                  <a href="{% url 'planes_aplicacion:desglose' centro.pk item.obligacion.pk %}{% if fecha %}?fecha={{ fecha|date:'Y-m-d' }}{% endif %}">Ver desglose por persona</a>
+                {% endif %}
+                {% if item.caso.evidencia %}
+                  <a href="{% url 'evidencias:validar' item.caso.evidencia.pk %}">Abrir evidencia</a>
+                {% endif %}
+                <a href="{% url 'bitacora:recorrido' centro.pk item.obligacion.pk %}">Ver trazabilidad</a>
+                {% if item.cambio and item.cambio.aplica and not fecha %}
+                  <a href="{% url 'evidencias:cargar' centro.pk item.obligacion.pk %}">Cargar evidencia</a>
+                {% endif %}
+              </li>
+          {% empty %}<li>No hay obligaciones sugeridas.</li>{% endfor %}
+        </ul>
+        {% if not fecha %}
+          <h2>Agregar o excluir una obligación</h2>
+          <form class="formulario tarjeta" method="post" action="{% url 'planes_aplicacion:agregar' centro.pk %}">
+            {% csrf_token %}<label>Obligación <select name="obligacion" required>
+              {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
+            </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+            <button class="boton boton--primario" type="submit">Agregar al plan</button>
+          </form>
+          <form class="formulario tarjeta" method="post" action="{% url 'planes_aplicacion:no_aplica' centro.pk %}">
+            {% csrf_token %}<label>Obligación <select name="obligacion" required>
+              {% for obligacion in sugerencias %}<option value="{{ obligacion.pk }}">{{ obligacion.version_actual.nombre }}</option>{% endfor %}
+            </select></label><label>Motivo <textarea name="motivo" required></textarea></label>
+            <button class="boton boton--primario" type="submit">Declarar No aplica</button>
+          </form>
+        {% endif %}
+        <h2>Historial de aplicabilidad</h2>
+        <ul class="lista-datos">{% for cambio in cambios %}<li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>{% empty %}<li>Sin cambios registrados.</li>{% endfor %}</ul>
+{% endblock %}

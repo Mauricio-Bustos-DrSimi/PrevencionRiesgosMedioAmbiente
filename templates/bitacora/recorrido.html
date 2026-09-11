@@ -1,60 +1,61 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Recorrido de trazabilidad</title></head>
-  <body>
-    <main>
-      <h1>Recorrido de trazabilidad</h1>
-      <p>Centro de costo: {{ centro.codigo_contable }} — {{ centro.nombre }}</p>
-      <p>Obligación: {{ obligacion.version_actual.nombre }}</p>
+{% extends "layouts/aplicacion.html" %}
 
-      <h2>Bitácora del dominio</h2>
-      <p>Los registros trazables no se editan ni se eliminan: las correcciones agregan actos o versiones.</p>
-      <p>El registro administrativo de Django no sustituye esta bitácora del dominio.</p>
-      <table>
-        <thead><tr><th>Qué ocurrió</th><th>Quién actuó</th><th>Cómo</th><th>Cuándo</th></tr></thead>
-        <tbody>
-          {% for evento in eventos %}
-            <tr>
-              <td>{{ evento.entidad }} — {{ evento.accion }} — {{ evento.descripcion }}</td>
-              <td>{{ evento.actor.username }}</td>
-              <td>{{ evento.canal }}</td>
-              <td>{{ evento.ocurrido_en }}</td>
-            </tr>
-          {% empty %}<tr><td colspan="4">Sin actos registrados.</td></tr>{% endfor %}
-        </tbody>
-      </table>
+{% block title %}Recorrido de trazabilidad{% endblock %}
+{% block page_title %}Recorrido de trazabilidad{% endblock %}
 
-      <h2>Obligación</h2>
-      <ol>
-        {% for version in obligacion.versiones.all %}
-          <li>Versión {{ version.numero }} — {{ version.nombre }} — {{ version.norma_origen }} — {{ version.autor.username }} — {{ version.motivo }}</li>
-        {% endfor %}
-      </ol>
+{% block content %}
+  <p>Centro de costo: {{ centro.codigo_contable }} — {{ centro.nombre }}</p>
+        <p>Obligación: {{ obligacion.version_actual.nombre }}</p>
 
-      <h2>Plan de aplicación</h2>
-      <ol>
-        {% for cambio in cambios %}
-          <li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.trabajador %}{{ cambio.trabajador.nombre }} ({{ cambio.trabajador.rut }}){% else %}Centro de costo{% endif %} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>
-        {% empty %}<li>Sin cambios registrados.</li>{% endfor %}
-      </ol>
+        <h2>Bitácora del dominio</h2>
+        <p>Los registros trazables no se editan ni se eliminan: las correcciones agregan actos o versiones.</p>
+        <p>El registro administrativo de Django no sustituye esta bitácora del dominio.</p>
+  <div class="tabla-desplazable" tabindex="0" aria-label="Actos de la bitácora del dominio">
+  <table class="tabla-datos tabla-datos--ancha">
+    <caption>Actos registrados para esta obligación y centro de costo</caption>
+    <thead><tr><th scope="col">Qué ocurrió</th><th scope="col">Quién actuó</th><th scope="col">Cómo</th><th scope="col">Cuándo</th></tr></thead>
+          <tbody>
+            {% for evento in eventos %}
+              <tr>
+                <td>{{ evento.entidad }} — {{ evento.accion }} — {{ evento.descripcion }}</td>
+                <td>{{ evento.actor.username }}</td>
+                <td>{{ evento.canal }}</td>
+                <td>{{ evento.ocurrido_en }}</td>
+              </tr>
+            {% empty %}<tr><td colspan="4">Sin actos registrados.</td></tr>{% endfor %}
+          </tbody>
+  </table>
+  </div>
 
-      <h2>Evidencia, Corrección y Validación</h2>
-      <p>Corregir una fecha y validar el documento son actos distintos: uno enmienda lo que el sistema leyó, el otro confirma lo que el documento prueba.</p>
-      <ol>
-        {% for evidencia in evidencias %}
-          <li>
-            Evidencia {{ evidencia.pk }} — {{ evidencia.emisor }} — {{ evidencia.fecha_emision }} — cargada por {{ evidencia.cargada_por.username }}
-            {% if evidencia.trabajador %}— a nombre de {{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }}){% else %}— del centro de costo{% endif %}
-            {% if evidencia.validacion %}— Validación por {{ evidencia.validacion.validada_por.username }} el {{ evidencia.validacion.validada_en }}{% else %}— Pendiente de validación{% endif %}
-            — <a href="{% url 'evidencias:verificar_integridad' evidencia.pk %}">Verificar integridad</a>
-            <ul>
-              {% for correccion in evidencia.correcciones.all %}
-                <li>Corrección de fechas — {{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
-              {% endfor %}
-            </ul>
-          </li>
-        {% empty %}<li>Sin evidencias registradas.</li>{% endfor %}
-      </ol>
-    </main>
-  </body>
-</html>
+        <h2>Obligación</h2>
+        <ol class="lista-datos lista-datos--numerada">
+          {% for version in obligacion.versiones.all %}
+            <li>Versión {{ version.numero }} — {{ version.nombre }} — {{ version.norma_origen }} — {{ version.autor.username }} — {{ version.motivo }}</li>
+          {% endfor %}
+        </ol>
+
+        <h2>Plan de aplicación</h2>
+        <ol class="lista-datos lista-datos--numerada">
+          {% for cambio in cambios %}
+            <li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.trabajador %}{{ cambio.trabajador.nombre }} ({{ cambio.trabajador.rut }}){% else %}Centro de costo{% endif %} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>
+          {% empty %}<li>Sin cambios registrados.</li>{% endfor %}
+        </ol>
+
+        <h2>Evidencia, Corrección y Validación</h2>
+        <p>Corregir una fecha y validar el documento son actos distintos: uno enmienda lo que el sistema leyó, el otro confirma lo que el documento prueba.</p>
+        <ol class="lista-datos lista-datos--numerada">
+          {% for evidencia in evidencias %}
+            <li>
+              Evidencia {{ evidencia.pk }} — {{ evidencia.emisor }} — {{ evidencia.fecha_emision }} — cargada por {{ evidencia.cargada_por.username }}
+              {% if evidencia.trabajador %}— a nombre de {{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }}){% else %}— del centro de costo{% endif %}
+              {% if evidencia.validacion %}— Validación por {{ evidencia.validacion.validada_por.username }} el {{ evidencia.validacion.validada_en }}{% else %}— Pendiente de validación{% endif %}
+              — <a href="{% url 'evidencias:verificar_integridad' evidencia.pk %}">Verificar integridad</a>
+              <ul class="lista-datos">
+                {% for correccion in evidencia.correcciones.all %}
+                  <li>Corrección de fechas — {{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
+                {% endfor %}
+              </ul>
+            </li>
+          {% empty %}<li>Sin evidencias registradas.</li>{% endfor %}
+        </ol>
+{% endblock %}

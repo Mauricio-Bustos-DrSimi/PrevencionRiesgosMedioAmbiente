@@ -1,0 +1,7 @@
+<section class="tarjeta estado-vacio">
+  <h2>{{ titulo|default:"Sin resultados" }}</h2>
+  <p>{{ mensaje|default:"No hay información disponible para esta consulta." }}</p>
+  {% if url_accion and texto_accion %}
+    <p><a href="{{ url_accion }}">{{ texto_accion }}</a></p>
+  {% endif %}
+</section>

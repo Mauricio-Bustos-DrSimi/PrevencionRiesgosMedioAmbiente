@@ -17,6 +17,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from aceptacion.reloj import reloj_en
+from acceso.templatetags.presentacion import rut_oculto
 from centros_costo.models import CentroCosto
 from evidencias.models import Evidencia
 from obligaciones.models import Obligacion
@@ -543,9 +544,10 @@ class RecorridoAceptacionMvpTests(TestCase):
         )
         self.assertEqual(Evidencia.objects.count(), evidencias_antes + 1)
         self.assertEqual(escaneo.trabajador, conductora)
-        # La bandeja tiene que decir a quién citar, no cuántos faltan.
+        # La bandeja identifica a la persona sin exponer su RUT completo.
         self.assertContains(bandeja, NOMBRE_TRABAJADOR)
-        self.assertContains(bandeja, RUT_CANONICO)
+        self.assertContains(bandeja, rut_oculto(RUT_CANONICO))
+        self.assertNotContains(bandeja, RUT_CANONICO)
         return escaneo
 
     def _validar_corrigiendo_la_fecha(self, escaneo: Evidencia) -> None:

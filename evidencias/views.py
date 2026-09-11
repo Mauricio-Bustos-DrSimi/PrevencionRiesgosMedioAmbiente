@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import cast
 
 from django.contrib.auth.models import User
@@ -17,99 +16,24 @@ from trabajadores.models import Trabajador
 from trabajadores.services import dotacion_del_centro
 
 from .forms import CorreccionEvidenciaForm, EvidenciaForm, ValidacionEvidenciaForm
+from .filtros import ESTADOS_POR_FILTRO, FiltroOperativo
 from .models import Evidencia
 from .services import (
     CasoCumplimiento,
     ErrorCargaEvidencia,
     ErrorCorreccionEvidencia,
     ErrorValidacionEvidencia,
+    EstadoCumplimiento,
     FechasLeidas,
     RechazoCargaEvidencia,
     cargar_evidencia,
     casos_de_cumplimiento,
     corregir_evidencia,
-    EstadoCumplimiento,
     estado_de_evidencia,
     fechas_efectivas,
     validar_evidencia,
     verificar_integridad_archivo,
 )
-
-
-ESTADOS_POR_FILTRO = {
-    "vigente": EstadoCumplimiento.VIGENTE,
-    "por_vencer": EstadoCumplimiento.POR_VENCER,
-    "vencido": EstadoCumplimiento.VENCIDO,
-    "pendiente_validacion": EstadoCumplimiento.PENDIENTE_VALIDACION,
-    "sin_evidencia": EstadoCumplimiento.SIN_EVIDENCIA,
-    "no_aplica": EstadoCumplimiento.NO_APLICA,
-}
-
-
-def _identificador_pedido(request: HttpRequest, parametro: str) -> int | None:
-    """Lee un identificador de la barra de direcciones; None si no es uno."""
-    try:
-        return int(request.GET.get(parametro, ""))
-    except ValueError:
-        return None
-
-
-def _trabajadores_operables() -> list[Trabajador]:
-    return list(
-        Trabajador.objects.filter(
-            asignaciones__centro_costo__es_franquicia=False,
-        ).distinct()
-    )
-
-
-@dataclass(frozen=True)
-class FiltroOperativo:
-    """Lo que el Prevencionista pidió ver, leído de la barra de direcciones.
-
-    Las dos bandejas filtran por lo mismo, así que la lectura y el criterio
-    viven en un solo lugar.
-    """
-
-    tipo_centro: str
-    centro: int | None
-    obligacion: int | None
-    trabajador: int | None
-
-    @classmethod
-    def desde(cls, request: HttpRequest) -> "FiltroOperativo":
-        tipo_centro = request.GET.get("tipo_centro", "")
-        return cls(
-            tipo_centro=tipo_centro if tipo_centro in CentroCosto.Tipo.values else "",
-            centro=_identificador_pedido(request, "centro"),
-            obligacion=_identificador_pedido(request, "obligacion"),
-            trabajador=_identificador_pedido(request, "trabajador"),
-        )
-
-    def admite(self, caso: CasoCumplimiento) -> bool:
-        return (
-            (not self.tipo_centro or caso.centro.tipo == self.tipo_centro)
-            and (self.centro is None or caso.centro.pk == self.centro)
-            and (self.obligacion is None or caso.obligacion.pk == self.obligacion)
-            and (
-                self.trabajador is None
-                or (
-                    caso.trabajador is not None
-                    and caso.trabajador.pk == self.trabajador
-                )
-            )
-        )
-
-    def como_contexto(self) -> dict[str, object]:
-        return {
-            "tipo_centro_seleccionado": self.tipo_centro,
-            "tipos_centro": CentroCosto.Tipo.choices,
-            "centro_seleccionado": self.centro,
-            "centros": CentroCosto.objects.filter(es_franquicia=False),
-            "obligacion_seleccionada": self.obligacion,
-            "obligaciones": Obligacion.objects.prefetch_related("versiones").all(),
-            "trabajador_seleccionado": self.trabajador,
-            "trabajadores": _trabajadores_operables(),
-        }
 
 
 def _dotacion_como_consulta(centro: CentroCosto) -> QuerySet[Trabajador]:
@@ -136,7 +60,7 @@ def operacion(request: HttpRequest) -> HttpResponse:
     )
     estado_seleccionado = request.GET.get("estado", "")
     estado = ESTADOS_POR_FILTRO.get(estado_seleccionado)
-    filtro = FiltroOperativo.desde(request)
+    filtro = FiltroOperativo.desde(request, incluir_titular=True)
     casos = [
         caso
         for caso in casos_de_cumplimiento(en_fecha=timezone.localdate())
@@ -146,6 +70,7 @@ def operacion(request: HttpRequest) -> HttpResponse:
         request,
         "evidencias/operacion.html",
         {
+            "titulo_pagina": "Operación del piloto",
             "casos": casos,
             "cantidad_centros": cantidad_centros,
             "piloto_conforme": piloto_conforme,

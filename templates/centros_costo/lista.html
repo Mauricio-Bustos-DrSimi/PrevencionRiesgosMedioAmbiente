@@ -1,35 +1,35 @@
-<!doctype html>
-<html lang="es">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Centros de costo</title>
-  </head>
-  <body>
-    <main>
-      <h1>Centros de costo</h1>
-      <table>
-        <thead>
-          <tr>
-            <th>Código contable oficial</th>
-            <th>Nombre</th>
-            <th>Tipo</th>
-            <th>CveUnidad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for centro in centros_costo %}
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}Centros de costo{% endblock %}
+{% block page_title %}Centros de costo{% endblock %}
+
+{% block content %}
+  <section class="tarjeta" aria-labelledby="centros-listado-titulo">
+  <h2 id="centros-listado-titulo">Centros incluidos en el piloto</h2>
+  <div class="tabla-desplazable" tabindex="0" aria-label="Centros de costo del piloto">
+  <table class="tabla-datos">
+    <caption>Centros de costo incluidos en el piloto</caption>
+          <thead>
             <tr>
-              <td><a href="{% url 'centros_costo:detalle' centro.pk %}">{{ centro.codigo_contable }}</a></td>
-              <td>{{ centro.nombre }}</td>
-              <td>{{ centro.get_tipo_display }}</td>
-              <td>{{ centro.cve_unidad|default:"—" }}</td>
+        <th scope="col">Código contable oficial</th>
+        <th scope="col">Nombre</th>
+        <th scope="col">Tipo</th>
+        <th scope="col">CveUnidad</th>
             </tr>
-          {% empty %}
-            <tr><td colspan="4">No hay centros de costo incluidos en el piloto.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </main>
-  </body>
-</html>
+          </thead>
+          <tbody>
+            {% for centro in centros_costo %}
+              <tr>
+                <td><a href="{% url 'centros_costo:detalle' centro.pk %}">{{ centro.codigo_contable }}</a></td>
+                <td>{{ centro.nombre }}</td>
+                <td>{{ centro.get_tipo_display }}</td>
+                <td>{{ centro.cve_unidad|default:"—" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4">No hay centros de costo incluidos en el piloto.</td></tr>
+            {% endfor %}
+          </tbody>
+  </table>
+  </div>
+  </section>
+{% endblock %}

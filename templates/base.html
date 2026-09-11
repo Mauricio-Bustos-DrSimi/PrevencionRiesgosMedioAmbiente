@@ -1,0 +1,19 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Prevención de Riesgos y Medio Ambiente{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'prevencion/css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'prevencion/css/base.css' %}">
+    <link rel="stylesheet" href="{% static 'prevencion/css/layout.css' %}">
+    <link rel="stylesheet" href="{% static 'prevencion/css/componentes.css' %}">
+    <link rel="stylesheet" href="{% static 'prevencion/css/dashboard.css' %}">
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <a class="saltar-contenido" href="#contenido-principal">Saltar al contenido</a>
+    {% block body %}{% endblock %}
+  </body>
+</html>

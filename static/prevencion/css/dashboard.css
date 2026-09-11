@@ -1,0 +1,106 @@
+.dashboard-encabezado p:last-child,
+.resumen-secundario p:last-child {
+  margin-bottom: 0;
+}
+
+.aviso-piloto {
+  max-width: 80ch;
+}
+
+.dashboard-filtros {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.dashboard-filtros h2,
+.dashboard-filtros__acciones {
+  grid-column: 1 / -1;
+}
+
+.dashboard-filtros h2 {
+  margin-bottom: 0;
+}
+
+.dashboard-filtros__acciones,
+.acciones-rapidas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.distribucion-estados {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+.distribucion-estados__grupo {
+  min-width: 0;
+}
+
+.grafico-estados {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-bottom: var(--space-3);
+}
+
+.grafico-estados__pista {
+  fill: var(--color-border);
+}
+
+.grafico-estados__barra {
+  fill: currentColor;
+}
+
+.grafico-estados__etiqueta,
+.grafico-estados__cantidad {
+  fill: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-small);
+}
+
+.grafico-estados__cantidad {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-anchor: end;
+}
+
+.tabla-distribucion caption {
+  font-size: var(--font-size-small);
+}
+
+.resumen-secundario {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-6);
+}
+
+.resumen-secundario h2 {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+@media (max-width: 1500px) {
+  .kpi-grid,
+  .distribucion-estados {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-filtros,
+  .kpi-grid,
+  .distribucion-estados {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

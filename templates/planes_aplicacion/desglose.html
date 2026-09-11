@@ -1,34 +1,34 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Desglose por persona</title></head>
-  <body>
-    <main>
-      <p><a href="{% url 'planes_aplicacion:plan' centro.pk %}{% if fecha %}?fecha={{ fecha|date:'Y-m-d' }}{% endif %}">Volver al plan de {{ centro.nombre }}</a></p>
-      <h1>Desglose por persona</h1>
-      <p>Centro de costo: {{ centro.codigo_contable }} — {{ centro.nombre }}</p>
-      <p>Obligación: {{ obligacion.version_actual.nombre }}</p>
-      {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}, con la dotación de esa fecha.</p>{% endif %}
-      {% if agregado %}
-        <p>Estado agregado: {{ agregado.estado }} — {{ agregado.cuantos_en_el_estado }} de {{ agregado.trabajadores_aplicables }} trabajadores</p>
-        <ul>
-          {% for estado, cantidad in agregado.recuento %}<li>{{ estado }}: {{ cantidad }}</li>{% endfor %}
+{% extends "layouts/aplicacion.html" %}
+{% load presentacion %}
+
+{% block title %}Desglose por persona{% endblock %}
+{% block page_title %}Desglose por persona{% endblock %}
+
+{% block content %}
+  <p><a href="{% url 'planes_aplicacion:plan' centro.pk %}{% if fecha %}?fecha={{ fecha|date:'Y-m-d' }}{% endif %}">Volver al plan de {{ centro.nombre }}</a></p>
+
+        <p>Centro de costo: {{ centro.codigo_contable }} — {{ centro.nombre }}</p>
+        <p>Obligación: {{ obligacion.version_actual.nombre }}</p>
+        {% if fecha %}<p>Consulta histórica al {{ fecha|date:"d/m/Y" }}, con la dotación de esa fecha.</p>{% endif %}
+        {% if agregado %}
+          <p>Estado agregado: {{ agregado.estado }} — {{ agregado.cuantos_en_el_estado }} de {{ agregado.trabajadores_aplicables }} trabajadores</p>
+          <ul class="lista-datos">
+            {% for estado, cantidad in agregado.recuento %}<li>{{ estado }}: {{ cantidad }}</li>{% endfor %}
+          </ul>
+        {% endif %}
+        <h2>Personas</h2>
+        <ul class="lista-datos">
+          {% for caso in casos %}
+            <li>
+              <a href="{% url 'trabajadores:detalle' caso.trabajador.pk %}">{{ caso.trabajador.nombre }} ({{ caso.trabajador.rut|rut_oculto }})</a>
+              — {{ caso.trabajador.cargo }}
+              — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
+              {% if caso.evidencia %}
+                — <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
+              {% elif caso.estado == "Sin evidencia" and not fecha %}
+                — <a href="{% url 'evidencias:cargar' centro.pk obligacion.pk %}">Cargar evidencia</a>
+              {% endif %}
+            </li>
+          {% empty %}<li>Ningún trabajador del centro tiene esta obligación en su plan.</li>{% endfor %}
         </ul>
-      {% endif %}
-      <h2>Personas</h2>
-      <ul>
-        {% for caso in casos %}
-          <li>
-            <a href="{% url 'trabajadores:detalle' caso.trabajador.pk %}">{{ caso.trabajador.nombre }} ({{ caso.trabajador.rut }})</a>
-            — {{ caso.trabajador.cargo }}
-            — {{ caso.estado }}{% if caso.fecha_fin %} — vigencia hasta {{ caso.fecha_fin }}{% endif %}
-            {% if caso.evidencia %}
-              — <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
-            {% elif caso.estado == "Sin evidencia" and not fecha %}
-              — <a href="{% url 'evidencias:cargar' centro.pk obligacion.pk %}">Cargar evidencia</a>
-            {% endif %}
-          </li>
-        {% empty %}<li>Ningún trabajador del centro tiene esta obligación en su plan.</li>{% endfor %}
-      </ul>
-    </main>
-  </body>
-</html>
+{% endblock %}

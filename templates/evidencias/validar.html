@@ -1,82 +1,83 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Validar evidencia</title></head>
-  <body>
-    <main>
-      <p><a href="{% url 'evidencias:pendientes' %}">Volver a evidencias pendientes</a></p>
-      <h1>Validar evidencia</h1>
-      <dl>
-        <dt>Centro de costo</dt>
-        <dd>{{ evidencia.centro_costo.nombre }}</dd>
-        <dt>Titular</dt>
-        <dd>
-          {% if evidencia.trabajador %}
-            <a href="{% url 'trabajadores:detalle' evidencia.trabajador.pk %}">{{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }})</a>
-          {% else %}
-            Centro de costo
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}Validar evidencia{% endblock %}
+{% block page_title %}Validar evidencia{% endblock %}
+
+{% block content %}
+  <p><a href="{% url 'evidencias:pendientes' %}">Volver a evidencias pendientes</a></p>
+
+        <dl class="ficha-datos tarjeta">
+          <dt>Centro de costo</dt>
+          <dd>{{ evidencia.centro_costo.nombre }}</dd>
+          <dt>Titular</dt>
+          <dd>
+            {% if evidencia.trabajador %}
+              <a href="{% url 'trabajadores:detalle' evidencia.trabajador.pk %}">{{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }})</a>
+            {% else %}
+              Centro de costo
+            {% endif %}
+          </dd>
+          <dt>Obligación</dt>
+          <dd>{{ evidencia.nombre_obligacion }}</dd>
+          <dt>Emisor</dt>
+          <dd>{{ evidencia.emisor }}</dd>
+          <dt>Fecha de emisión con que se cargó</dt>
+          <dd>{{ evidencia.fecha_emision }}</dd>
+          <dt>Fecha de vencimiento con que se cargó</dt>
+          <dd>{{ evidencia.fecha_vencimiento }}</dd>
+          {% if fechas.fue_corregida %}
+            <dt>Fecha de emisión corregida</dt>
+            <dd>{{ fechas.fecha_emision }}</dd>
+            <dt>Fecha de vencimiento corregida</dt>
+            <dd>{{ fechas.fecha_vencimiento }}</dd>
           {% endif %}
-        </dd>
-        <dt>Obligación</dt>
-        <dd>{{ evidencia.nombre_obligacion }}</dd>
-        <dt>Emisor</dt>
-        <dd>{{ evidencia.emisor }}</dd>
-        <dt>Fecha de emisión con que se cargó</dt>
-        <dd>{{ evidencia.fecha_emision }}</dd>
-        <dt>Fecha de vencimiento con que se cargó</dt>
-        <dd>{{ evidencia.fecha_vencimiento }}</dd>
-        {% if fechas.fue_corregida %}
-          <dt>Fecha de emisión corregida</dt>
-          <dd>{{ fechas.fecha_emision }}</dd>
-          <dt>Fecha de vencimiento corregida</dt>
-          <dd>{{ fechas.fecha_vencimiento }}</dd>
+          <dt>Periodicidad</dt>
+          <dd>{{ evidencia.periodicidad_mostrada }}</dd>
+          <dt>Hash SHA-256</dt>
+          <dd>{{ evidencia.hash_sha256 }}</dd>
+          <dt>Estado de cumplimiento</dt>
+          <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
+        </dl>
+        {% if error %}<p role="alert">{{ error }}</p>{% endif %}
+        {% if puede_renovar %}
+          <p><a href="{% url 'evidencias:cargar' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Cargar nueva evidencia</a></p>
         {% endif %}
-        <dt>Periodicidad</dt>
-        <dd>{{ evidencia.periodicidad_mostrada }}</dd>
-        <dt>Hash SHA-256</dt>
-        <dd>{{ evidencia.hash_sha256 }}</dd>
-        <dt>Estado de cumplimiento</dt>
-        <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
-      </dl>
-      {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-      {% if puede_renovar %}
-        <p><a href="{% url 'evidencias:cargar' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Cargar nueva evidencia</a></p>
-      {% endif %}
-      <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Ver recorrido de trazabilidad</a></p>
-      {% if validacion %}
-        <p>Validada por {{ validacion.validada_por.username }} el {{ validacion.validada_en }}.</p>
-      {% else %}
-        <form method="post">
-          {% csrf_token %}
-          <p>Confirmo que la evidencia corresponde a la obligación y que sus fechas son correctas.</p>
-          <p>Si el documento no declaraba sus fechas, escribe aquí las que dice el papel: se registran como una corrección aparte, sin tocar el archivo ni su hash.</p>
-          {{ formulario.as_p }}
-          <button type="submit">Validar evidencia</button>
-        </form>
-      {% endif %}
+        <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Ver recorrido de trazabilidad</a></p>
+        {% if validacion %}
+          <p>Validada por {{ validacion.validada_por.username }} el {{ validacion.validada_en }}.</p>
+        {% elif capacidades.puede_validar_evidencias %}
+          <form class="formulario tarjeta" method="post">
+            {% csrf_token %}
+            <p>Confirmo que la evidencia corresponde a la obligación y que sus fechas son correctas.</p>
+            <p>Si el documento no declaraba sus fechas, escribe aquí las que dice el papel: se registran como una corrección aparte, sin tocar el archivo ni su hash.</p>
+            {{ formulario.as_p }}
+            <button class="boton boton--primario" type="submit">Validar evidencia</button>
+          </form>
+        {% endif %}
 
-      <h2>Corregir las fechas leídas del documento</h2>
-      <p>Corregir una fecha no es cargar una evidencia nueva: no llegó otro documento, se leyó bien el que ya estaba.</p>
-      <form method="post" action="{% url 'evidencias:corregir' evidencia.pk %}">
-        {% csrf_token %}
-        {{ formulario_correccion.as_p }}
-        <button type="submit">Registrar corrección de fechas</button>
-      </form>
-      <h3>Correcciones registradas</h3>
-      <ol>
-        {% for correccion in correcciones %}
-          <li>{{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
-        {% empty %}<li>Sin correcciones: rigen las fechas con que se cargó.</li>{% endfor %}
-      </ol>
+        {% if capacidades.puede_validar_evidencias %}
+          <h2>Corregir las fechas leídas del documento</h2>
+          <p>Corregir una fecha no es cargar una evidencia nueva: no llegó otro documento, se leyó bien el que ya estaba.</p>
+          <form class="formulario tarjeta" method="post" action="{% url 'evidencias:corregir' evidencia.pk %}">
+            {% csrf_token %}
+            {{ formulario_correccion.as_p }}
+            <button class="boton boton--primario" type="submit">Registrar corrección de fechas</button>
+          </form>
+        {% endif %}
+        <h3>Correcciones registradas</h3>
+        <ol class="lista-datos lista-datos--numerada">
+          {% for correccion in correcciones %}
+            <li>{{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
+          {% empty %}<li>Sin correcciones: rigen las fechas con que se cargó.</li>{% endfor %}
+        </ol>
 
-      <h2>Evidencias de esta obligación para este titular</h2>
-      <ol>
-        {% for item in historial %}
-          <li>
-            <a href="{% url 'evidencias:validar' item.pk %}">{{ item.emisor }} — {{ item.fecha_emision }}</a>
-            {% if item.validacion %}— Validada{% else %}— Pendiente de validación{% endif %}
-          </li>
-        {% endfor %}
-      </ol>
-    </main>
-  </body>
-</html>
+        <h2>Evidencias de esta obligación para este titular</h2>
+        <ol class="lista-datos lista-datos--numerada">
+          {% for item in historial %}
+            <li>
+              <a href="{% url 'evidencias:validar' item.pk %}">{{ item.emisor }} — {{ item.fecha_emision }}</a>
+              {% if item.validacion %}— Validada{% else %}— Pendiente de validación{% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+{% endblock %}

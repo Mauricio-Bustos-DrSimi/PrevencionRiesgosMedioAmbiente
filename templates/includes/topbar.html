@@ -1,0 +1,23 @@
+{% load static %}
+<div class="topbar__identity">
+  <img class="topbar__logo" src="{% static 'prevencion/img/logo-institucional.png' %}" alt="Logotipo institucional de Farmacias del Dr. Simi" width="220">
+  <span class="topbar__title">{{ titulo_pagina|default:titulo_barra }}</span>
+</div>
+
+<div class="topbar__session">
+  {% if entorno_demostracion %}
+    <span class="topbar__environment">DEMOSTRACIÓN</span>
+  {% endif %}
+  {% if request.user.is_authenticated %}
+    <span class="topbar__user">
+      {% if request.user.get_full_name %}{{ request.user.get_full_name }}{% else %}{{ request.user.username }}{% endif %}
+    </span>
+    <span class="topbar__roles" aria-label="Roles">
+      {% for rol in roles_visuales %}
+        <span class="topbar__rol">{{ rol }}</span>
+      {% empty %}
+        <span class="topbar__rol">Sin rol operativo</span>
+      {% endfor %}
+    </span>
+  {% endif %}
+</div>

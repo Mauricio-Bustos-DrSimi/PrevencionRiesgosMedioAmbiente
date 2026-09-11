@@ -1,22 +1,16 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Catálogo de obligaciones</title></head>
-  <body>
-    <main>
-      <h1>Catálogo de obligaciones vigente</h1>
-      <p><a href="{% url 'obligaciones:crear' %}">Registrar obligación</a></p>
-      <ul>
-        {% for obligacion in obligaciones %}
-          {% with version=obligacion.version_actual %}
-            <li>
-              <a href="{% url 'obligaciones:detalle' obligacion.pk %}">{{ version.nombre }}</a>
-              — {{ version.norma_origen }} — {{ version.get_titular_display }} — {{ version.get_periodicidad_display }}
-            </li>
-          {% endwith %}
-        {% empty %}
-          <li>No hay obligaciones vigentes.</li>
-        {% endfor %}
-      </ul>
-    </main>
-  </body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}Catálogo de obligaciones{% endblock %}
+{% block page_title %}Catálogo de obligaciones vigente{% endblock %}
+{% block page_actions %}<a class="boton boton--primario" href="{% url 'obligaciones:crear' %}">Registrar obligación</a>{% endblock %}
+
+{% block content %}
+  <section class="tarjeta" aria-labelledby="catalogo-listado-titulo">
+    <h2 id="catalogo-listado-titulo">Obligaciones vigentes</h2>
+    <div class="tabla-desplazable" tabindex="0" aria-label="Catálogo de obligaciones">
+      <table class="tabla-datos tabla-datos--ancha"><caption>{{ obligaciones|length }} obligaciones vigentes</caption><thead><tr><th scope="col">Obligación</th><th scope="col">Norma de origen</th><th scope="col">Titular</th><th scope="col">Periodicidad</th></tr></thead>
+        <tbody>{% for obligacion in obligaciones %}{% with version=obligacion.version_actual %}<tr><td><a href="{% url 'obligaciones:detalle' obligacion.pk %}">{{ version.nombre }}</a></td><td>{{ version.norma_origen }}</td><td>{{ version.get_titular_display }}</td><td>{{ version.get_periodicidad_display }}</td></tr>{% endwith %}{% empty %}<tr><td colspan="4">No hay obligaciones vigentes.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

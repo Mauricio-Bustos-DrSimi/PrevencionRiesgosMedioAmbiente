@@ -1,5 +1,8 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>{{ titulo }}</title></head>
-  <body><main><h1>{{ titulo }}</h1><form method="post">{% csrf_token %}{{ formulario.as_p }}<button type="submit">Guardar</button></form></main></body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+
+{% block title %}{{ titulo }}{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+  <form class="formulario tarjeta" method="post">{% csrf_token %}{{ formulario.as_p }}<button class="boton boton--primario" type="submit">Guardar</button></form>
+{% endblock %}

@@ -6,13 +6,16 @@ se confirma individualmente y no se mueve sola cuando alguien cambia de cargo.
 """
 
 import tempfile
-from datetime import date
+from datetime import date, datetime, time
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
 
+from aceptacion.reloj import reloj_en
 from centros_costo.models import CentroCosto
 from evidencias.services import (
     EstadoCumplimiento,
@@ -46,6 +49,10 @@ ASEO = "Auxiliar de aseo(Nivel opera)"
 
 class SugerenciaPorCargoTests(TestCase):
     def setUp(self) -> None:
+        # El plan y la dotación se crean antes del corte histórico consultado.
+        self.enterContext(
+            reloj_en(timezone.make_aware(datetime.combine(EN_FECHA, time(12))))
+        )
         directorio = tempfile.TemporaryDirectory()
         self.addCleanup(directorio.cleanup)
         override = self.settings(MEDIA_ROOT=directorio.name)
@@ -114,6 +121,36 @@ class SugerenciaPorCargoTests(TestCase):
             aplica=True,
             motivo="Confirmado individualmente.",
             autor=self.actor,
+        )
+
+    def test_sysadmin_no_ve_acciones_de_dotacion_reservadas_a_prevencion(self) -> None:
+        trabajador = self._trabajador(
+            "11111111-1",
+            CONDUCTOR,
+            validado=False,
+        )
+        sysadmin = get_user_model().objects.create_superuser(
+            username="sysadmin_dotacion",
+            password="clave-segura-de-prueba",
+        )
+        self.client.force_login(sysadmin)
+
+        detalle = self.client.get(
+            reverse("trabajadores:detalle", args=[trabajador.pk]),
+        )
+
+        self.assertEqual(detalle.status_code, 200)
+        self.assertNotContains(
+            detalle,
+            reverse("trabajadores:validar", args=[trabajador.pk]),
+        )
+        self.assertNotContains(
+            detalle,
+            reverse("trabajadores:trasladar", args=[trabajador.pk]),
+        )
+        self.assertNotContains(
+            detalle,
+            reverse("trabajadores:dar_de_baja", args=[trabajador.pk]),
         )
 
     # --- la sugerencia ----------------------------------------------------

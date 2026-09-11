@@ -1,20 +1,17 @@
-<!doctype html>
-<html lang="es">
-  <head><meta charset="utf-8"><title>Trabajadores</title></head>
-  <body>
-    <main>
-      <h1>Trabajadores</h1>
-      <p><a href="{% url 'trabajadores:crear' %}">Registrar trabajador</a></p>
-      <ul>
-        {% for fila in trabajadores %}
-          <li>
-            <a href="{% url 'trabajadores:detalle' fila.trabajador.pk %}">{{ fila.trabajador.nombre }} ({{ fila.trabajador.rut }})</a>
-            — {{ fila.trabajador.cargo }}
-            — {% if fila.centro %}<a href="{% url 'centros_costo:detalle' fila.centro.pk %}">{{ fila.centro.nombre }}</a>{% else %}Dado de baja{% endif %}
-            — {% if fila.validado %}Validado{% else %}No validado{% endif %}
-          </li>
-        {% empty %}<li>No hay trabajadores registrados.</li>{% endfor %}
-      </ul>
-    </main>
-  </body>
-</html>
+{% extends "layouts/aplicacion.html" %}
+{% load presentacion %}
+
+{% block title %}Trabajadores{% endblock %}
+{% block page_title %}Trabajadores{% endblock %}
+{% block page_actions %}<a class="boton boton--primario" href="{% url 'trabajadores:crear' %}">Registrar trabajador</a>{% endblock %}
+
+{% block content %}
+  <section class="tarjeta" aria-labelledby="trabajadores-listado-titulo">
+    <h2 id="trabajadores-listado-titulo">Dotación registrada</h2>
+    <div class="tabla-desplazable" tabindex="0" aria-label="Trabajadores registrados">
+      <table class="tabla-datos tabla-datos--ancha"><caption>{{ trabajadores|length }} trabajadores registrados</caption><thead><tr><th scope="col">Trabajador</th><th scope="col">RUT</th><th scope="col">Cargo</th><th scope="col">Centro de costo</th><th scope="col">Estado</th></tr></thead>
+        <tbody>{% for fila in trabajadores %}<tr><td><a href="{% url 'trabajadores:detalle' fila.trabajador.pk %}">{{ fila.trabajador.nombre }}</a></td><td>{{ fila.trabajador.rut|rut_oculto }}</td><td>{{ fila.trabajador.cargo }}</td><td>{% if fila.centro %}<a href="{% url 'centros_costo:detalle' fila.centro.pk %}">{{ fila.centro.nombre }}</a>{% else %}Dado de baja{% endif %}</td><td>{% if fila.validado %}<span class="estado estado--vigente"><span aria-hidden="true">●</span> Validado</span>{% else %}<span class="estado estado--pendiente"><span aria-hidden="true">◆</span> No validado</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="5">No hay trabajadores registrados.</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

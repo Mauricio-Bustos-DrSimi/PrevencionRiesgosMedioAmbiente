@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block body %}
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      {% block sidebar %}{% include "includes/sidebar.html" %}{% endblock %}
+    </aside>
+
+    <div class="app-content">
+      <header class="app-topbar">
+        {% block topbar %}{% include "includes/topbar.html" %}{% endblock %}
+      </header>
+
+      {% block messages %}
+        {% include "includes/mensajes.html" %}
+      {% endblock %}
+
+      <main class="app-main" id="contenido-principal" tabindex="-1">
+        <div class="contenido-limitado flujo-vertical">
+          <header class="grupo-horizontal">
+            <h1>{% block page_title %}{{ titulo_pagina|default:"Prevención de Riesgos y Medio Ambiente" }}{% endblock %}</h1>
+            <div class="grupo-horizontal">
+              {% block page_actions %}{% endblock %}
+            </div>
+          </header>
+
+          {% block content %}{% endblock %}
+        </div>
+      </main>
+    </div>
+  </div>
+{% endblock %}

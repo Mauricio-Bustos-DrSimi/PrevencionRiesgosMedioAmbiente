@@ -1,0 +1,41 @@
+<div class="sidebar__inner">
+  <div class="sidebar__brand">
+    <span>Prevención de Riesgos y Medio Ambiente</span>
+  </div>
+
+  <nav class="sidebar__nav" aria-label="Navegación principal">
+    <a class="sidebar__link" href="{% url 'inicio' %}"{% if seccion_activa == "inicio" %} aria-current="page"{% endif %}>Inicio</a>
+
+    <div class="sidebar__group">
+      <p class="sidebar__group-title" id="nav-operacion">Operación</p>
+      <div role="group" aria-labelledby="nav-operacion">
+        <a class="sidebar__link" href="{% url 'evidencias:operacion' %}"{% if seccion_activa == "operacion" %} aria-current="page"{% endif %}>Cumplimiento</a>
+        <a class="sidebar__link" href="{% url 'evidencias:vencimientos' %}"{% if seccion_activa == "vencimientos" %} aria-current="page"{% endif %}>Vencimientos</a>
+        <a class="sidebar__link" href="{% url 'evidencias:pendientes' %}"{% if seccion_activa == "pendientes" %} aria-current="page"{% endif %}>Pendientes de validación</a>
+      </div>
+    </div>
+
+    <div class="sidebar__group">
+      <p class="sidebar__group-title" id="nav-gestion">Gestión</p>
+      <div role="group" aria-labelledby="nav-gestion">
+        <a class="sidebar__link" href="{% url 'centros_costo:lista' %}"{% if seccion_activa == "centros" %} aria-current="page"{% endif %}>Centros de costo</a>
+        <a class="sidebar__link" href="{% url 'trabajadores:lista' %}"{% if seccion_activa == "trabajadores" %} aria-current="page"{% endif %}>Trabajadores</a>
+        <a class="sidebar__link" href="{% url 'obligaciones:catalogo' %}"{% if seccion_activa == "obligaciones" %} aria-current="page"{% endif %}>Catálogo de obligaciones</a>
+      </div>
+    </div>
+
+    {% if capacidades.puede_administrar or capacidades.puede_importar %}
+      <div class="sidebar__group">
+        <p class="sidebar__group-title" id="nav-administracion">Administración</p>
+        <div role="group" aria-labelledby="nav-administracion">
+          {% if capacidades.puede_administrar %}
+            <a class="sidebar__link" href="{% url 'admin:index' %}"{% if seccion_activa == "administracion" %} aria-current="page"{% endif %}>Administración Django</a>
+          {% endif %}
+          {% if capacidades.puede_importar %}
+            <a class="sidebar__link" href="{% url 'importaciones:importar' %}"{% if seccion_activa == "importaciones" %} aria-current="page"{% endif %}>Importaciones</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </nav>
+</div>

@@ -1,0 +1,31 @@
+<section class="tarjeta" aria-labelledby="distribucion-estados-titulo">
+  <h2 id="distribucion-estados-titulo">Distribución actual por estado</h2>
+  <div class="distribucion-estados">
+    {% for distribucion in distribuciones %}
+      <article class="distribucion-estados__grupo">
+        <h3>{{ distribucion.etiqueta }}</h3>
+        <svg class="grafico-estados" viewBox="0 0 640 220" aria-hidden="true" focusable="false">
+          {% for barra in distribucion.barras %}
+            <g class="estado-color--{{ barra.variante }}">
+              <text class="grafico-estados__etiqueta" x="0" y="{{ barra.y_texto }}">{{ barra.etiqueta }}</text>
+              <rect class="grafico-estados__pista" x="205" y="{{ barra.y_barra }}" width="360" height="16" rx="8"></rect>
+              <rect class="grafico-estados__barra" x="205" y="{{ barra.y_barra }}" width="{{ barra.ancho }}" height="16" rx="8"></rect>
+              <text class="grafico-estados__cantidad" x="625" y="{{ barra.y_texto }}">{{ barra.cantidad }}</text>
+            </g>
+          {% endfor %}
+        </svg>
+        <div class="tabla-desplazable" tabindex="0" aria-label="{{ distribucion.etiqueta }} por estado">
+          <table class="tabla-datos tabla-distribucion">
+            <caption>{{ distribucion.etiqueta }} por estado</caption>
+            <thead><tr><th scope="col">Estado</th><th scope="col">Cantidad</th></tr></thead>
+            <tbody>
+              {% for barra in distribucion.barras %}
+                <tr><th scope="row">{{ barra.etiqueta }}</th><td class="numero-tabular">{{ barra.cantidad }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>

@@ -6,14 +6,16 @@ comprueba aquí no es un tiempo —que depende de la máquina— sino que **el
 número de consultas no crece con la dotación**.
 """
 
-from datetime import date
+from datetime import date, datetime, time
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, User
 from django.db import connection
 from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
+from aceptacion.reloj import reloj_en
 from centros_costo.models import CentroCosto
 from evidencias.services import caso_de_cumplimiento, casos_de_cumplimiento
 from obligaciones.models import (
@@ -33,6 +35,10 @@ EN_FECHA = date(2026, 9, 1)
 
 class EscalaDeLasBandejasTests(TestCase):
     def setUp(self) -> None:
+        # Las altas deben existir en la fecha que consulta cada prueba.
+        self.enterContext(
+            reloj_en(timezone.make_aware(datetime.combine(EN_FECHA, time(12))))
+        )
         self.actor: User = get_user_model().objects.create_user(
             username="prevencion_escala",
         )

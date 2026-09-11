@@ -1,0 +1,298 @@
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-areas: "sidebar content";
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 0;
+  grid-area: sidebar;
+  width: var(--sidebar-width);
+  height: 100vh;
+  overflow-y: auto;
+  color: var(--color-sidebar-text);
+  background: var(--color-sidebar);
+}
+
+.app-sidebar :focus-visible {
+  outline-color: var(--color-sidebar-text);
+}
+
+.sidebar__inner {
+  display: flex;
+  min-height: 100%;
+  padding: var(--space-5) var(--space-3);
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sidebar__brand {
+  padding: 0 var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--color-sidebar-active);
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-h2);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sidebar__nav,
+.sidebar__group,
+.sidebar__group > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar__nav {
+  gap: var(--space-4);
+}
+
+.sidebar__group {
+  gap: var(--space-1);
+}
+
+.sidebar__group > div {
+  gap: var(--space-1);
+}
+
+.sidebar__group-title {
+  margin: 0 var(--space-2) var(--space-1);
+  color: var(--color-sidebar-text);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.sidebar__link {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--color-sidebar-text);
+  text-decoration: none;
+}
+
+.sidebar__link:hover,
+.sidebar__link[aria-current="page"] {
+  color: var(--color-sidebar-text);
+  background: var(--color-sidebar-active);
+}
+
+.sidebar__link[aria-current="page"] {
+  font-weight: 700;
+  box-shadow: inset 4px 0 0 var(--color-sidebar-text);
+}
+
+.app-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  grid-area: content;
+}
+
+.app-topbar {
+  display: flex;
+  min-height: var(--topbar-min-height);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: var(--color-surface);
+}
+
+.topbar__identity,
+.topbar__session,
+.topbar__roles {
+  display: flex;
+  align-items: center;
+}
+
+.topbar__identity {
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.topbar__logo {
+  width: 220px;
+  max-height: 48px;
+  flex: 0 1 220px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.topbar__title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__session {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
+  text-align: right;
+}
+
+.topbar__user {
+  font-weight: 600;
+}
+
+.topbar__roles {
+  gap: var(--space-1);
+}
+
+.topbar__rol,
+.topbar__environment {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-small);
+  line-height: 1.35;
+}
+
+.topbar__rol {
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  background: var(--color-page);
+}
+
+.topbar__environment {
+  border: 1px solid var(--color-por-vencer);
+  color: var(--color-por-vencer);
+  background: var(--bg-por-vencer);
+  font-weight: 700;
+}
+
+.app-main {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-5);
+}
+
+.contenido-limitado {
+  width: 100%;
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.flujo-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.grupo-horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tabla-desplazable {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius-card);
+}
+
+.tabla-desplazable:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.pagina-acceso {
+  display: grid;
+  min-height: 100vh;
+  padding: var(--space-6);
+  place-items: center;
+  background: linear-gradient(135deg, var(--color-sidebar) 0 34%, var(--color-page) 34% 100%);
+}
+
+.acceso-tarjeta {
+  display: grid;
+  width: min(920px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+}
+
+.acceso-marca,
+.acceso-formulario {
+  display: flex;
+  padding: var(--space-8);
+  flex-direction: column;
+  justify-content: center;
+}
+
+.acceso-marca {
+  color: var(--color-sidebar-text);
+  background: var(--color-sidebar);
+  gap: var(--space-3);
+}
+
+.acceso-marca__nombre {
+  font-size: var(--font-size-h1);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.acceso-marca__descripcion {
+  color: var(--color-sidebar-text);
+  opacity: 0.82;
+}
+
+@media (max-width: 1500px) {
+  .app-main {
+    padding: var(--space-4);
+  }
+}
+
+/* Este umbral cubre el ancho efectivo de un notebook al ampliar el texto al
+   200 %. La navegación de escritorio permanece siempre visible. */
+@media (max-width: 900px) {
+  .app-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .topbar__identity,
+  .topbar__session {
+    flex: 1 1 100%;
+  }
+
+  .topbar__identity {
+    flex-wrap: wrap;
+  }
+
+  .topbar__title {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .topbar__session {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .app-main {
+    padding: var(--space-3);
+  }
+
+  .pagina-acceso {
+    padding: var(--space-3);
+  }
+
+  .acceso-tarjeta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .acceso-marca,
+  .acceso-formulario {
+    padding: var(--space-5);
+  }
+}

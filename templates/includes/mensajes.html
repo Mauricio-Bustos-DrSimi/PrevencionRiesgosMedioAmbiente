@@ -1,0 +1,15 @@
+{% if messages %}
+  <div class="app-main mensajes" aria-label="Mensajes del sistema">
+    {% for message in messages %}
+      {% if message.level >= 40 %}
+        <p class="mensaje mensaje--error" role="alert">{{ message|force_escape }}</p>
+      {% elif message.level >= 30 %}
+        <p class="mensaje mensaje--aviso" role="status">{{ message|force_escape }}</p>
+      {% elif message.level >= 25 %}
+        <p class="mensaje mensaje--exito" role="status">{{ message|force_escape }}</p>
+      {% else %}
+        <p class="mensaje mensaje--informacion" role="status">{{ message|force_escape }}</p>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}

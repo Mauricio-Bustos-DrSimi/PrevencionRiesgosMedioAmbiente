@@ -1,5 +1,8 @@
+import re
 import tempfile
 from datetime import date, datetime
+from html import unescape
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -15,6 +18,8 @@ from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
 from planes_aplicacion.models import CambioAplicabilidad
 
 from evidencias.models import Evidencia
+from evidencias.services import EstadoCumplimiento
+from trabajadores.services import crear_trabajador, validar_trabajador
 
 
 # La bandeja se consulta a fechas absolutas; los actos que la alimentan tienen
@@ -123,7 +128,11 @@ class OperacionPilotoHttpTests(TestCase):
         respuesta = self.client.get(reverse("evidencias:operacion"))
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, "9 centros de costo operables")
+        self.assertContains(
+            respuesta,
+            '<p><strong class="numero-tabular">9</strong> centros de costo operables</p>',
+            html=True,
+        )
         self.assertContains(respuesta, "Piloto conforme")
         self.assertContains(respuesta, "Farmacia Piloto 1")
         self.assertContains(respuesta, "Centro administrativo piloto")
@@ -150,7 +159,11 @@ class OperacionPilotoHttpTests(TestCase):
 
         respuesta = self.client.get(reverse("evidencias:operacion"))
 
-        self.assertContains(respuesta, "8 centros de costo operables")
+        self.assertContains(
+            respuesta,
+            '<p><strong class="numero-tabular">8</strong> centros de costo operables</p>',
+            html=True,
+        )
         self.assertNotContains(respuesta, "Piloto conforme")
         self.assertContains(respuesta, "varias farmacias")
 
@@ -158,7 +171,7 @@ class OperacionPilotoHttpTests(TestCase):
         respuesta = self.client.get(reverse("inicio"))
 
         self.assertContains(respuesta, reverse("evidencias:operacion"))
-        self.assertContains(respuesta, "Operación del piloto")
+        self.assertContains(respuesta, "Cumplimiento")
 
     def test_filtra_sin_confundir_sin_evidencia_vencido_y_pendiente(self) -> None:
         centro = CentroCosto.objects.create(
@@ -351,3 +364,169 @@ class OperacionPilotoHttpTests(TestCase):
                 args=[centro.pk, obligacion_no_aplica.pk],
             ),
         )
+
+    def test_migra_la_operacion_a_tabla_sin_cambiar_filtros_ni_enlaces(self) -> None:
+        centro = CentroCosto.objects.create(
+            codigo_contable="FAR-TAB-001",
+            nombre="Farmacia de operación ficticia",
+            tipo=CentroCosto.Tipo.FARMACIA,
+        )
+        trabajador = crear_trabajador(
+            rut="12345678-5",
+            nombre="Persona Ficticia de Operación",
+            cargo="Cargo ficticio",
+            centro=centro,
+            motivo="Fixture visual de operación",
+            actor=self.usuario,
+        )
+        validar_trabajador(
+            trabajador=trabajador,
+            actor=self.usuario,
+        )
+        obligacion_trabajador = self._crear_obligacion(
+            "Obligación individual ficticia"
+        )
+        casos = [
+            SimpleNamespace(
+                centro=centro,
+                obligacion=self.obligacion,
+                nombre_obligacion="Mantener extintores vigentes",
+                trabajador=None,
+                estado=EstadoCumplimiento.SIN_EVIDENCIA,
+                evidencia=None,
+                fecha_fin=None,
+            ),
+            SimpleNamespace(
+                centro=centro,
+                obligacion=obligacion_trabajador,
+                nombre_obligacion="Obligación individual ficticia",
+                trabajador=trabajador,
+                estado=EstadoCumplimiento.SIN_EVIDENCIA,
+                evidencia=None,
+                fecha_fin=None,
+            ),
+        ]
+        url = reverse("evidencias:operacion")
+
+        with patch("evidencias.views.casos_de_cumplimiento", return_value=casos):
+            trabajadores = self.client.get(
+                f"{url}?estado=sin_evidencia&tipo_centro=farmacia"
+                f"&obligacion={obligacion_trabajador.pk}&centro={centro.pk}"
+                f"&trabajador={trabajador.pk}&titular=trabajador"
+            )
+            instalaciones = self.client.get(f"{url}?titular=centro_costo")
+            titular_invalido = self.client.get(f"{url}?titular=desconocido")
+            identificadores_invalidos = self.client.get(
+                f"{url}?tipo_centro=desconocido&centro=abc"
+                "&obligacion=abc&trabajador=abc"
+            )
+            filtros_incompatibles = self.client.get(
+                f"{url}?centro={centro.pk}&tipo_centro=bodega"
+            )
+
+        self.assertTemplateUsed(trabajadores, "layouts/aplicacion.html")
+        self.assertContains(trabajadores, "<main", count=1)
+        self.assertContains(trabajadores, "<h1", count=1)
+        self.assertContains(trabajadores, "<h1>Operación del piloto</h1>", html=True)
+        self.assertContains(trabajadores, "<caption>", count=1)
+        self.assertContains(trabajadores, 'scope="col"', count=7)
+        self.assertContains(trabajadores, 'name="estado"')
+        self.assertContains(trabajadores, 'name="tipo_centro"')
+        self.assertContains(trabajadores, 'name="obligacion"')
+        self.assertContains(trabajadores, 'name="centro"')
+        self.assertContains(trabajadores, 'name="trabajador"')
+        self.assertContains(trabajadores, 'name="titular"')
+        for valor in (
+            "sin_evidencia",
+            "farmacia",
+            str(obligacion_trabajador.pk),
+            str(centro.pk),
+            str(trabajador.pk),
+            "trabajador",
+        ):
+            self.assertContains(trabajadores, f'value="{valor}" selected')
+        self.assertContains(trabajadores, "••.•••.678-5", count=2)
+        self.assertNotContains(trabajadores, "12345678-5")
+        self.assertEqual(len(trabajadores.context["casos"]), 1)
+        self.assertEqual(trabajadores.context["casos"][0].trabajador, trabajador)
+        self.assertEqual(len(instalaciones.context["casos"]), 1)
+        self.assertIsNone(instalaciones.context["casos"][0].trabajador)
+        self.assertEqual(len(titular_invalido.context["casos"]), 2)
+        self.assertEqual(titular_invalido.context["titular_seleccionado"], "")
+        self.assertEqual(len(identificadores_invalidos.context["casos"]), 2)
+        self.assertEqual(len(filtros_incompatibles.context["casos"]), 0)
+        self.assertContains(
+            trabajadores,
+            reverse("evidencias:cargar", args=[centro.pk, obligacion_trabajador.pk]),
+        )
+        self.assertNotContains(trabajadores, "<script")
+
+    def test_un_kpi_abre_las_filas_del_titular_que_cuenta(self) -> None:
+        centro = CentroCosto.objects.create(
+            codigo_contable="FAR-KPI-001",
+            nombre="Farmacia de enlace KPI",
+            tipo=CentroCosto.Tipo.FARMACIA,
+        )
+        trabajador = crear_trabajador(
+            rut="12345678-5",
+            nombre="Persona Ficticia de KPI",
+            cargo="Cargo ficticio",
+            centro=centro,
+            motivo="Fixture de enlace KPI",
+            actor=self.usuario,
+        )
+        validar_trabajador(trabajador=trabajador, actor=self.usuario)
+        casos = [
+            SimpleNamespace(
+                centro=centro,
+                obligacion=self.obligacion,
+                nombre_obligacion="Caso de instalación",
+                trabajador=None,
+                estado=EstadoCumplimiento.SIN_EVIDENCIA,
+                evidencia=None,
+                fecha_fin=None,
+            ),
+            SimpleNamespace(
+                centro=centro,
+                obligacion=self.obligacion,
+                nombre_obligacion="Caso de trabajador",
+                trabajador=trabajador,
+                estado=EstadoCumplimiento.SIN_EVIDENCIA,
+                evidencia=None,
+                fecha_fin=None,
+            ),
+        ]
+
+        with (
+            patch("acceso.views.casos_de_cumplimiento", return_value=casos),
+            patch("evidencias.views.casos_de_cumplimiento", return_value=casos),
+        ):
+            portada = self.client.get(reverse("inicio"))
+            coincidencia = re.search(
+                r'href="([^"]+)" aria-label="1 trabajadores: Sin evidencia"',
+                portada.content.decode(),
+            )
+            if coincidencia is None:
+                self.fail("La portada no generó el enlace KPI esperado.")
+            destino = self.client.get(unescape(coincidencia.group(1)))
+
+        self.assertEqual(destino.status_code, 200)
+        self.assertEqual(len(destino.context["casos"]), 1)
+        self.assertEqual(destino.context["casos"][0].trabajador, trabajador)
+        self.assertContains(destino, "1 caso titular–obligación")
+
+    def test_conserva_la_proteccion_de_acceso_a_operacion(self) -> None:
+        url = reverse("evidencias:operacion")
+        self.client.logout()
+
+        anonimo = self.client.get(url)
+        usuario_sin_rol = get_user_model().objects.create_user(
+            username="sin_rol_operacion",
+            password="clave-segura-de-prueba",
+        )
+        self.client.force_login(usuario_sin_rol)
+        prohibido = self.client.get(url)
+
+        self.assertEqual(anonimo.status_code, 302)
+        self.assertIn(reverse("iniciar_sesion"), anonimo.headers["Location"])
+        self.assertEqual(prohibido.status_code, 403)
