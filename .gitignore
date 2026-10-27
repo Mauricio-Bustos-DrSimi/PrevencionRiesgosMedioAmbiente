@@ -17,3 +17,9 @@ db.sqlite3
 
 # Entornos preservados y PostgreSQL exclusivo de pruebas.
 /.desarrollo-local/
+
+# Perfiles y capturas temporales usados para validación visual local.
+/.scratch/chrome-*/
+/.scratch/**/chrome-*/
+/.scratch/capturar-ticket*.ps1
+/.scratch/ticket*.png

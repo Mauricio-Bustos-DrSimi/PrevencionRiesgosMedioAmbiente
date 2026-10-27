@@ -16,6 +16,7 @@ from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from configuracion.tiempo import fin_del_dia
 from obligaciones.models import (
+    ClasificacionEvidencia,
     Obligacion,
     Periodicidad,
     TitularObligacion,
@@ -164,6 +165,13 @@ def verificar_integridad_archivo(evidencia: Evidencia) -> ResultadoIntegridad:
     )
 
 
+def _es_salud_ocupacional(evidencia: Evidencia) -> bool:
+    return (
+        evidencia.version_obligacion.clasificacion_evidencia
+        == ClasificacionEvidencia.SALUD_OCUPACIONAL
+    )
+
+
 def cargar_evidencia(
     *,
     centro: CentroCosto,
@@ -176,6 +184,7 @@ def cargar_evidencia(
     trabajador: Trabajador | None = None,
     canal: str = "web",
 ) -> Evidencia:
+    exigir_prevencionista(actor, "cargar evidencia")
     version = obligacion.version_actual
     # El titular se hace valer antes que la aplicabilidad: si la evidencia se
     # está atribuyendo al titular equivocado, el motivo del rechazo tiene que
@@ -225,11 +234,16 @@ def cargar_evidencia(
                 entidad="Evidencia",
                 identificador=str(evidencia.pk),
                 descripcion=(
-                    f"Cargó evidencia para {obligacion}"
-                    + (
-                        f" a nombre de {trabajador.nombre} ({trabajador.rut})."
-                        if trabajador is not None
-                        else "."
+                    "Cargó una evidencia de salud ocupacional para un titular "
+                    "autorizado."
+                    if _es_salud_ocupacional(evidencia)
+                    else (
+                        f"Cargó evidencia para {obligacion}"
+                        + (
+                            f" a nombre de {trabajador.nombre} ({trabajador.rut})."
+                            if trabajador is not None
+                            else "."
+                        )
                     )
                 ),
                 canal=canal,
@@ -288,11 +302,16 @@ def corregir_evidencia(
             entidad="Evidencia",
             identificador=str(evidencia.pk),
             descripcion=(
-                f"Corrigió las fechas leídas del documento de "
-                f"{evidencia.nombre_obligacion}: emisión "
-                f"{fecha_emision.isoformat()} y vencimiento "
-                f"{fecha_vencimiento.isoformat()}. El archivo y su hash no "
-                "cambian."
+                "Corrigió las fechas de una evidencia de salud ocupacional. "
+                "El archivo y su hash no cambian."
+                if _es_salud_ocupacional(evidencia)
+                else (
+                    f"Corrigió las fechas leídas del documento de "
+                    f"{evidencia.nombre_obligacion}: emisión "
+                    f"{fecha_emision.isoformat()} y vencimiento "
+                    f"{fecha_vencimiento.isoformat()}. El archivo y su hash no "
+                    "cambian."
+                )
             ),
             canal=canal,
             contexto=ContextoBitacora.para_evidencia(evidencia),
@@ -339,9 +358,14 @@ def validar_evidencia(
             entidad="Evidencia",
             identificador=str(evidencia.pk),
             descripcion=(
-                f"Validó evidencia para {evidencia.nombre_obligacion} "
-                f"(versión {evidencia.version_obligacion.numero}); confirmó "
-                "su correspondencia y sus fechas."
+                "Validó una evidencia de salud ocupacional; confirmó su "
+                "correspondencia y sus fechas."
+                if _es_salud_ocupacional(evidencia)
+                else (
+                    f"Validó evidencia para {evidencia.nombre_obligacion} "
+                    f"(versión {evidencia.version_obligacion.numero}); confirmó "
+                    "su correspondencia y sus fechas."
+                )
             ),
             canal=canal,
             contexto=ContextoBitacora.para_evidencia(evidencia),

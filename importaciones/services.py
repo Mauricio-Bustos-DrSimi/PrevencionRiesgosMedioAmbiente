@@ -6,10 +6,17 @@ from typing import TextIO
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 
+from acceso.permisos import exigir_prevencionista
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
-from obligaciones.models import Periodicidad, TitularObligacion, TipoVersion, VersionObligacion
-from obligaciones.models import Obligacion
+from obligaciones.models import (
+    ClasificacionEvidencia,
+    Obligacion,
+    Periodicidad,
+    TipoVersion,
+    TitularObligacion,
+    VersionObligacion,
+)
 
 
 @dataclass(frozen=True)
@@ -53,6 +60,7 @@ def _bool(valor: str) -> bool:
 
 
 def importar_centros(archivo: TextIO, actor: User) -> ResultadoImportacion:
+    exigir_prevencionista(actor, "importar centros")
     resultados: list[ResultadoFila] = []
     vistos: set[str] = set()
     for numero, fila in _filas(archivo):
@@ -92,19 +100,28 @@ def importar_centros(archivo: TextIO, actor: User) -> ResultadoImportacion:
 
 
 def importar_obligaciones(archivo: TextIO, actor: User) -> ResultadoImportacion:
+    exigir_prevencionista(actor, "importar obligaciones")
     resultados: list[ResultadoFila] = []
     vistos: set[str] = set()
     for numero, fila in _filas(archivo):
         nombre = fila.get("nombre", "")
         titular = fila.get("titular", "")
         periodicidad = fila.get("periodicidad", "")
+        clasificacion = fila.get("clasificacion_evidencia", "")
         if (
             not nombre
             or not fila.get("norma_origen")
             or titular not in TitularObligacion.values
             or periodicidad not in Periodicidad.values
+            or clasificacion not in ClasificacionEvidencia.values
         ):
-            resultados.append(ResultadoFila(numero, "Rechazada", "Nombre, norma, titular o periodicidad inválidos."))
+            resultados.append(
+                ResultadoFila(
+                    numero,
+                    "Rechazada",
+                    "Nombre, norma, titular, periodicidad o clasificación inválidos.",
+                )
+            )
             continue
         if nombre in vistos or VersionObligacion.objects.filter(
             numero=1, nombre=nombre, tipo_version=TipoVersion.ALTA
@@ -125,6 +142,7 @@ def importar_obligaciones(archivo: TextIO, actor: User) -> ResultadoImportacion:
                     norma_origen=fila["norma_origen"],
                     titular=titular,
                     periodicidad=periodicidad,
+                    clasificacion_evidencia=clasificacion,
                     tipos_centro=tipos,
                     tipo_version=TipoVersion.ALTA,
                     autor=actor,

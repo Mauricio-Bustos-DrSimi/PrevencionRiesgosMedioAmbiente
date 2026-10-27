@@ -11,7 +11,7 @@
       <div role="group" aria-labelledby="nav-operacion">
         <a class="sidebar__link" href="{% url 'evidencias:operacion' %}"{% if seccion_activa == "operacion" %} aria-current="page"{% endif %}>Cumplimiento</a>
         <a class="sidebar__link" href="{% url 'evidencias:vencimientos' %}"{% if seccion_activa == "vencimientos" %} aria-current="page"{% endif %}>Vencimientos</a>
-        <a class="sidebar__link" href="{% url 'evidencias:pendientes' %}"{% if seccion_activa == "pendientes" %} aria-current="page"{% endif %}>Pendientes de validación</a>
+        {% if capacidades.puede_ver_pendientes %}<a class="sidebar__link" href="{% url 'evidencias:pendientes' %}"{% if seccion_activa == "pendientes" %} aria-current="page"{% endif %}>Pendientes de validación</a>{% endif %}
       </div>
     </div>
 

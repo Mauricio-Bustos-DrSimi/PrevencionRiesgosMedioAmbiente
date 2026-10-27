@@ -34,6 +34,11 @@ class Periodicidad(models.TextChoices):
     PERMANENTE = "permanente", "Permanente"
 
 
+class ClasificacionEvidencia(models.TextChoices):
+    GENERAL = "general", "General"
+    SALUD_OCUPACIONAL = "salud_ocupacional", "Salud ocupacional"
+
+
 class TipoVersion(models.TextChoices):
     ALTA = "alta", "Alta"
     CORRECCION = "correccion", "Corrección"
@@ -103,6 +108,12 @@ class VersionObligacion(models.Model):
     norma_origen = models.CharField("norma de origen", max_length=255)
     titular = models.CharField(max_length=30, choices=TitularObligacion.choices)
     periodicidad = models.CharField(max_length=30, choices=Periodicidad.choices)
+    clasificacion_evidencia = models.CharField(
+        "clasificación de la evidencia",
+        max_length=30,
+        choices=ClasificacionEvidencia.choices,
+        default=ClasificacionEvidencia.GENERAL,
+    )
     tipos_centro = models.JSONField(
         default=list,
         blank=True,

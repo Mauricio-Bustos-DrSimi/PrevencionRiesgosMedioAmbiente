@@ -1,7 +1,11 @@
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
-from acceso.permisos import requiere_operador_mvp
+from acceso.permisos import (
+    centros_visibles_para,
+    exigir_acceso_centro,
+    requiere_operador_mvp,
+)
 
 from .models import CentroCosto
 
@@ -12,7 +16,7 @@ def lista_centros_costo(
     pk: int | None = None,
 ) -> HttpResponse:
     del pk
-    centros = CentroCosto.objects.filter(es_franquicia=False)
+    centros = centros_visibles_para(request.user)
     return render(
         request,
         "centros_costo/lista.html",
@@ -29,6 +33,7 @@ def detalle_centro_costo(
         pk=pk,
         es_franquicia=False,
     )
+    exigir_acceso_centro(request.user, centro)
     return render(
         request,
         "centros_costo/detalle.html",

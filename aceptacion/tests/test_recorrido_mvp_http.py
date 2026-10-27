@@ -136,6 +136,7 @@ class RecorridoAceptacionMvpTests(TestCase):
                 "norma_origen": norma_origen,
                 "titular": titular,
                 "periodicidad": periodicidad,
+                "clasificacion_evidencia": "general",
                 "tipos_centro": tipos_centro,
                 "cargos_sugeridos": cargos_sugeridos,
                 "motivo": f"Alta de {nombre} para el recorrido de aceptación.",
@@ -573,9 +574,11 @@ class RecorridoAceptacionMvpTests(TestCase):
             )
             self.assertEqual(correccion.status_code, 302)
             detalle = self._obtener("evidencias:validar", escaneo.pk)
-            integridad = self._obtener(
-                "evidencias:verificar_integridad",
-                escaneo.pk,
+            integridad = cast(
+                HttpResponse,
+                self.client.post(
+                    reverse("evidencias:verificar_integridad", args=[escaneo.pk])
+                ),
             )
 
         guardada = Evidencia.objects.get(pk=escaneo.pk)
@@ -934,13 +937,17 @@ class RecorridoAceptacionMvpTests(TestCase):
         self.assertContains(recorrido, EMISOR_INICIAL)
         self.assertContains(recorrido, EMISOR_RENOVACION)
 
-        integridad_anterior = self._obtener(
-            "evidencias:verificar_integridad",
-            anterior.pk,
+        integridad_anterior = cast(
+            HttpResponse,
+            self.client.post(
+                reverse("evidencias:verificar_integridad", args=[anterior.pk])
+            ),
         )
-        integridad_renovada = self._obtener(
-            "evidencias:verificar_integridad",
-            renovada.pk,
+        integridad_renovada = cast(
+            HttpResponse,
+            self.client.post(
+                reverse("evidencias:verificar_integridad", args=[renovada.pk])
+            ),
         )
 
         self.assertContains(integridad_anterior, "Coincide")
@@ -949,7 +956,12 @@ class RecorridoAceptacionMvpTests(TestCase):
         self.assertContains(integridad_renovada, renovada.hash_sha256, count=2)
 
         Path(anterior.archivo.path).write_bytes(b"contenido sustituido")
-        alterada = self._obtener("evidencias:verificar_integridad", anterior.pk)
+        alterada = cast(
+            HttpResponse,
+            self.client.post(
+                reverse("evidencias:verificar_integridad", args=[anterior.pk])
+            ),
+        )
         recorrido_final = cast(HttpResponse, self.client.get(url_recorrido))
 
         self.assertContains(alterada, "No coincide — Alteración detectada")

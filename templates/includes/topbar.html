@@ -19,5 +19,9 @@
         <span class="topbar__rol">Sin rol operativo</span>
       {% endfor %}
     </span>
+    <form class="topbar__logout" method="post" action="{% url 'cerrar_sesion' %}">
+      {% csrf_token %}
+      <button class="boton boton--secundario" type="submit">Cerrar sesión</button>
+    </form>
   {% endif %}
 </div>

@@ -2,7 +2,7 @@
 
 {% block title %}Catálogo de obligaciones{% endblock %}
 {% block page_title %}Catálogo de obligaciones vigente{% endblock %}
-{% block page_actions %}<a class="boton boton--primario" href="{% url 'obligaciones:crear' %}">Registrar obligación</a>{% endblock %}
+{% block page_actions %}{% if capacidades.puede_modificar %}<a class="boton boton--primario" href="{% url 'obligaciones:crear' %}">Registrar obligación</a>{% endif %}{% endblock %}
 
 {% block content %}
   <section class="tarjeta" aria-labelledby="catalogo-listado-titulo">

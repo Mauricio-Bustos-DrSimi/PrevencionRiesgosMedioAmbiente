@@ -4,7 +4,7 @@ from typing import TypedDict
 from django.contrib.auth.models import User
 from django.http import HttpRequest
 
-from .permisos import GRUPO_PREVENCIONISTA
+from .permisos import GRUPO_ENCARGADO, GRUPO_PREVENCIONISTA
 
 
 class CapacidadesVisuales(TypedDict):
@@ -12,6 +12,10 @@ class CapacidadesVisuales(TypedDict):
     puede_validar_evidencias: bool
     puede_administrar: bool
     puede_importar: bool
+    puede_modificar: bool
+    puede_ver_pendientes: bool
+    puede_descargar_evidencias: bool
+    puede_ver_rut_completo: bool
 
 
 class ContextoVisual(TypedDict):
@@ -75,26 +79,33 @@ def _titulo_barra(request: HttpRequest) -> str:
 
 def contexto_visual(request: HttpRequest) -> ContextoVisual:
     usuario = request.user
-    es_prevencionista = False
-    es_sysadmin = False
+    administrador = False
+    prevencionista = False
+    encargado = False
     if usuario.is_authenticated:
         actor: User = usuario
-        es_prevencionista = actor.groups.filter(
-            name=GRUPO_PREVENCIONISTA,
-        ).exists()
-        es_sysadmin = actor.is_superuser
+        administrador = actor.is_superuser
+        grupos = set(actor.groups.values_list("name", flat=True))
+        prevencionista = GRUPO_PREVENCIONISTA in grupos
+        encargado = GRUPO_ENCARGADO in grupos
 
     roles: list[str] = []
-    if es_prevencionista:
+    if administrador:
+        roles.append("Administrador")
+    if prevencionista:
         roles.append("Prevencionista")
-    if es_sysadmin:
-        roles.append("Sysadmin")
+    if encargado:
+        roles.append("Encargado")
 
     capacidades: CapacidadesVisuales = {
-        "puede_operar": es_prevencionista or es_sysadmin,
-        "puede_validar_evidencias": es_prevencionista,
-        "puede_administrar": es_sysadmin,
-        "puede_importar": es_sysadmin,
+        "puede_operar": administrador or prevencionista or encargado,
+        "puede_validar_evidencias": administrador or prevencionista,
+        "puede_administrar": administrador,
+        "puede_importar": administrador or prevencionista,
+        "puede_modificar": administrador or prevencionista,
+        "puede_ver_pendientes": administrador or prevencionista,
+        "puede_descargar_evidencias": administrador or prevencionista,
+        "puede_ver_rut_completo": administrador or prevencionista,
     }
     return {
         "capacidades": capacidades,

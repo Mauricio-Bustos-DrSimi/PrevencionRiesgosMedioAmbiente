@@ -9,6 +9,7 @@ from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 
 from .models import (
+    ClasificacionEvidencia,
     Obligacion,
     Periodicidad,
     TipoVersion,
@@ -34,6 +35,11 @@ class AltaObligacionAdminForm(forms.ModelForm):
         label="Periodicidad",
         choices=Periodicidad.choices,
     )
+    clasificacion_evidencia = forms.ChoiceField(
+        label="Clasificación de la evidencia",
+        choices=ClasificacionEvidencia.choices,
+        initial=ClasificacionEvidencia.GENERAL,
+    )
     tipos_centro = forms.MultipleChoiceField(
         label="Tipos de centro sugeridos",
         choices=CentroCosto.Tipo.choices,
@@ -55,7 +61,6 @@ class AltaObligacionAdminForm(forms.ModelForm):
     def clean_cargos_sugeridos(self) -> list[str]:
         return cargos_escritos(self.cleaned_data.get("cargos_sugeridos", ""))
 
-
 @admin.register(Obligacion)
 class ObligacionAdmin(admin.ModelAdmin):
     form = AltaObligacionAdminForm
@@ -64,6 +69,7 @@ class ObligacionAdmin(admin.ModelAdmin):
         "norma_origen",
         "titular",
         "periodicidad",
+        "clasificacion_evidencia",
         "tipos_centro",
         "cargos_sugeridos",
         "motivo",
@@ -121,6 +127,7 @@ class ObligacionAdmin(admin.ModelAdmin):
             norma_origen=form.cleaned_data["norma_origen"],
             titular=form.cleaned_data["titular"],
             periodicidad=form.cleaned_data["periodicidad"],
+            clasificacion_evidencia=form.cleaned_data["clasificacion_evidencia"],
             tipos_centro=form.cleaned_data["tipos_centro"],
             cargos_sugeridos=form.cleaned_data["cargos_sugeridos"],
             tipo_version=TipoVersion.ALTA,

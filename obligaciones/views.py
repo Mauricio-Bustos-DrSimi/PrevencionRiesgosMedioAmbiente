@@ -3,10 +3,15 @@ from typing import cast
 from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import get_object_or_404, redirect, render
 
-from acceso.permisos import requiere_operador_mvp
+from acceso.permisos import (
+    exigir_acceso_version_evidencia,
+    puede_acceder_version_evidencia,
+    requiere_modificador_mvp,
+    requiere_operador_mvp,
+)
 from bitacora.registro import ContextoBitacora, registrar_evento
 from obligaciones.forms import FormularioCierre, FormularioObligacion
 from obligaciones.models import Obligacion, TipoVersion, VersionObligacion
@@ -18,6 +23,7 @@ def catalogo(request: HttpRequest) -> HttpResponse:
         obligacion
         for obligacion in Obligacion.objects.prefetch_related("versiones").all()
         if obligacion.esta_vigente
+        and puede_acceder_version_evidencia(request.user, obligacion.version_actual)
     ]
     return render(
         request,
@@ -26,7 +32,7 @@ def catalogo(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def crear(request: HttpRequest) -> HttpResponse:
     formulario = FormularioObligacion(request.POST or None)
     if request.method == "POST" and formulario.is_valid():
@@ -40,6 +46,9 @@ def crear(request: HttpRequest) -> HttpResponse:
                 norma_origen=formulario.cleaned_data["norma_origen"],
                 titular=formulario.cleaned_data["titular"],
                 periodicidad=formulario.cleaned_data["periodicidad"],
+                clasificacion_evidencia=formulario.cleaned_data[
+                    "clasificacion_evidencia"
+                ],
                 tipos_centro=formulario.cleaned_data["tipos_centro"],
                 cargos_sugeridos=formulario.cleaned_data["cargos_sugeridos"],
                 tipo_version=TipoVersion.ALTA,
@@ -69,6 +78,7 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
         Obligacion.objects.prefetch_related("versiones__autor"),
         pk=pk,
     )
+    exigir_acceso_version_evidencia(request.user, obligacion.version_actual)
     return render(
         request,
         "obligaciones/detalle.html",
@@ -76,10 +86,11 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def corregir(request: HttpRequest, pk: int) -> HttpResponse:
     obligacion = get_object_or_404(Obligacion, pk=pk)
     actual = obligacion.version_actual
+    exigir_acceso_version_evidencia(request.user, actual)
     if not obligacion.esta_vigente:
         raise PermissionDenied
     datos_iniciales = {
@@ -87,15 +98,22 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
         "norma_origen": actual.norma_origen,
         "titular": actual.titular,
         "periodicidad": actual.periodicidad,
+        "clasificacion_evidencia": actual.clasificacion_evidencia,
         "tipos_centro": actual.tipos_centro,
         "cargos_sugeridos": "\n".join(actual.cargos_sugeridos),
     }
-    formulario = FormularioObligacion(request.POST or None, initial=datos_iniciales)
+    datos_formulario: QueryDict | None = request.POST if request.method == "POST" else None
+    if request.method == "POST" and "clasificacion_evidencia" not in request.POST:
+        datos_compatibles = request.POST.copy()
+        datos_compatibles["clasificacion_evidencia"] = actual.clasificacion_evidencia
+        datos_formulario = datos_compatibles
+    formulario = FormularioObligacion(datos_formulario, initial=datos_iniciales)
     if request.method == "POST" and formulario.is_valid():
         actor = cast(User, request.user)
         with transaction.atomic():
             obligacion = Obligacion.objects.select_for_update().get(pk=pk)
             actual = obligacion.version_actual
+            exigir_acceso_version_evidencia(request.user, actual)
             if not obligacion.esta_vigente:
                 raise PermissionDenied
             version = VersionObligacion.objects.create(
@@ -105,6 +123,9 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
                 norma_origen=formulario.cleaned_data["norma_origen"],
                 titular=formulario.cleaned_data["titular"],
                 periodicidad=formulario.cleaned_data["periodicidad"],
+                clasificacion_evidencia=formulario.cleaned_data[
+                    "clasificacion_evidencia"
+                ],
                 tipos_centro=formulario.cleaned_data["tipos_centro"],
                 cargos_sugeridos=formulario.cleaned_data["cargos_sugeridos"],
                 tipo_version=TipoVersion.CORRECCION,
@@ -128,10 +149,11 @@ def corregir(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
     obligacion = get_object_or_404(Obligacion, pk=pk)
     actual = obligacion.version_actual
+    exigir_acceso_version_evidencia(request.user, actual)
     if not obligacion.esta_vigente:
         raise PermissionDenied
     formulario = FormularioCierre(request.POST or None)
@@ -140,6 +162,7 @@ def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
         with transaction.atomic():
             obligacion = Obligacion.objects.select_for_update().get(pk=pk)
             actual = obligacion.version_actual
+            exigir_acceso_version_evidencia(request.user, actual)
             if not obligacion.esta_vigente:
                 raise PermissionDenied
             version = VersionObligacion.objects.create(
@@ -149,6 +172,7 @@ def cerrar(request: HttpRequest, pk: int) -> HttpResponse:
                 norma_origen=actual.norma_origen,
                 titular=actual.titular,
                 periodicidad=actual.periodicidad,
+                clasificacion_evidencia=actual.clasificacion_evidencia,
                 tipos_centro=actual.tipos_centro,
                 cargos_sugeridos=actual.cargos_sugeridos,
                 tipo_version=TipoVersion.CIERRE,

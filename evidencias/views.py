@@ -1,13 +1,24 @@
+import re
+from pathlib import PurePosixPath
 from typing import cast
 
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
 
-from acceso.permisos import requiere_operador_mvp
+from acceso.permisos import (
+    centros_visibles_para,
+    exigir_acceso_evidencia,
+    exigir_acceso_version_evidencia,
+    puede_acceder_salud_ocupacional,
+    puede_acceder_version_evidencia,
+    requiere_operador_mvp,
+    requiere_modificador_mvp,
+)
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion, TitularObligacion
@@ -45,7 +56,8 @@ def _dotacion_como_consulta(centro: CentroCosto) -> QuerySet[Trabajador]:
 
 @requiere_operador_mvp
 def operacion(request: HttpRequest) -> HttpResponse:
-    centros = CentroCosto.objects.filter(es_franquicia=False)
+    centros = centros_visibles_para(request.user)
+    centros_ids = set(centros.values_list("pk", flat=True))
     cantidad_centros = centros.count()
     cantidad_farmacias = centros.filter(tipo=CentroCosto.Tipo.FARMACIA).count()
     cantidad_administrativos = centros.filter(
@@ -64,7 +76,13 @@ def operacion(request: HttpRequest) -> HttpResponse:
     casos = [
         caso
         for caso in casos_de_cumplimiento(en_fecha=timezone.localdate())
-        if (estado is None or caso.estado == estado) and filtro.admite(caso)
+        if caso.centro.pk in centros_ids
+        and puede_acceder_version_evidencia(
+            request.user,
+            getattr(caso, "version_obligacion", None),
+        )
+        and (estado is None or caso.estado == estado)
+        and filtro.admite(caso)
     ]
     return render(
         request,
@@ -77,15 +95,16 @@ def operacion(request: HttpRequest) -> HttpResponse:
             "estado_seleccionado": estado_seleccionado,
             "estados": ESTADOS_POR_FILTRO.items(),
         }
-        | filtro.como_contexto(),
+        | filtro.como_contexto(request),
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResponse:
     centro = get_object_or_404(CentroCosto, pk=centro_pk, es_franquicia=False)
     obligacion = get_object_or_404(Obligacion, pk=obligacion_pk)
     version = obligacion.version_actual
+    exigir_acceso_version_evidencia(request.user, version)
     es_del_trabajador = version.titular == TitularObligacion.TRABAJADOR
     dotacion = _dotacion_como_consulta(centro) if es_del_trabajador else None
     formulario = EvidenciaForm(
@@ -142,11 +161,20 @@ def cargar(request: HttpRequest, centro_pk: int, obligacion_pk: int) -> HttpResp
     return render(request, "evidencias/formulario.html", contexto | {"error": None})
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def pendientes(request: HttpRequest) -> HttpResponse:
     evidencias = Evidencia.objects.filter(
         validacion__isnull=True,
-    ).select_related("centro_costo", "obligacion", "trabajador")
+    ).select_related(
+        "centro_costo",
+        "obligacion",
+        "trabajador",
+        "version_obligacion",
+    )
+    if not puede_acceder_salud_ocupacional(request.user):
+        evidencias = evidencias.exclude(
+            version_obligacion__clasificacion_evidencia="salud_ocupacional"
+        )
     return render(
         request,
         "evidencias/pendientes.html",
@@ -156,6 +184,9 @@ def pendientes(request: HttpRequest) -> HttpResponse:
 
 @requiere_operador_mvp
 def vencimientos(request: HttpRequest) -> HttpResponse:
+    centros_ids = set(
+        centros_visibles_para(request.user).values_list("pk", flat=True)
+    )
     estados_por_filtro = {
         clave: ESTADOS_POR_FILTRO[clave]
         for clave in (
@@ -177,7 +208,13 @@ def vencimientos(request: HttpRequest) -> HttpResponse:
     casos = [
         caso
         for caso in casos_de_cumplimiento(en_fecha=timezone.localdate())
-        if caso.estado in estados_visibles and filtro.admite(caso)
+        if caso.centro.pk in centros_ids
+        and puede_acceder_version_evidencia(
+            request.user,
+            getattr(caso, "version_obligacion", None),
+        )
+        and caso.estado in estados_visibles
+        and filtro.admite(caso)
     ]
     return render(
         request,
@@ -187,7 +224,7 @@ def vencimientos(request: HttpRequest) -> HttpResponse:
             "dias_por_vencer": settings.DIAS_POR_VENCER,
             "estado_seleccionado": estado_seleccionado,
         }
-        | filtro.como_contexto(),
+        | filtro.como_contexto(request),
     )
 
 
@@ -197,9 +234,54 @@ def _evidencia_con_contexto(evidencia_pk: int) -> Evidencia:
             "centro_costo",
             "obligacion",
             "trabajador",
+            "version_obligacion",
         ).prefetch_related("correcciones__autor"),
         pk=evidencia_pk,
     )
+
+
+def _nombre_seguro_descarga(evidencia: Evidencia) -> str:
+    """Da un nombre neutro sin exponer el original, que puede contener un RUT."""
+    extension = PurePosixPath(evidencia.archivo.name).suffix.lower()
+    if re.fullmatch(r"\.[a-z0-9]{1,10}", extension) is None:
+        extension = ""
+    return f"evidencia-{evidencia.pk}{extension}"
+
+
+@requiere_modificador_mvp
+def descargar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
+    evidencia = get_object_or_404(
+        Evidencia.objects.select_related(
+            "centro_costo",
+            "obligacion",
+            "trabajador",
+            "version_obligacion",
+        ),
+        pk=evidencia_pk,
+    )
+    exigir_acceso_evidencia(request.user, evidencia)
+    try:
+        archivo = evidencia.archivo.open("rb")
+    except (OSError, ValueError) as exc:
+        raise Http404("El archivo de la evidencia no está disponible.") from exc
+
+    registrar_evento(
+        actor=request.user,
+        accion="descargar_evidencia",
+        entidad="Evidencia",
+        identificador=str(evidencia.pk),
+        descripcion="Inició la descarga mediante la ruta autenticada.",
+        canal="web",
+        contexto=ContextoBitacora.para_evidencia(evidencia),
+    )
+    respuesta = FileResponse(
+        archivo,
+        as_attachment=True,
+        filename=_nombre_seguro_descarga(evidencia),
+        content_type="application/octet-stream",
+    )
+    respuesta["X-Content-Type-Options"] = "nosniff"
+    return cast(HttpResponse, respuesta)
 
 
 def _pantalla_de_validacion(
@@ -241,9 +323,10 @@ def _pantalla_de_validacion(
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     evidencia = _evidencia_con_contexto(evidencia_pk)
+    exigir_acceso_evidencia(request.user, evidencia)
     # Validar sin corregir se sigue enviando sin datos: el formulario se liga
     # al método, no a que el envío traiga algo.
     formulario = ValidacionEvidenciaForm(
@@ -282,10 +365,11 @@ def validar(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def corregir(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     """Corregir es independiente de validar: también se corrige lo ya validado."""
     evidencia = _evidencia_con_contexto(evidencia_pk)
+    exigir_acceso_evidencia(request.user, evidencia)
     formulario = CorreccionEvidenciaForm(request.POST or None)
     error = None
     if request.method == "POST" and formulario.is_valid():
@@ -311,12 +395,25 @@ def corregir(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
+@require_http_methods(["GET", "POST"])
 def verificar_integridad(request: HttpRequest, evidencia_pk: int) -> HttpResponse:
     evidencia = get_object_or_404(
-        Evidencia.objects.select_related("centro_costo", "obligacion"),
+        Evidencia.objects.select_related(
+            "centro_costo",
+            "obligacion",
+            "trabajador",
+            "version_obligacion",
+        ),
         pk=evidencia_pk,
     )
+    exigir_acceso_evidencia(request.user, evidencia)
+    if request.method == "GET":
+        return render(
+            request,
+            "evidencias/integridad.html",
+            {"evidencia": evidencia, "resultado": None},
+        )
     resultado = verificar_integridad_archivo(evidencia)
     if resultado.error:
         descripcion = resultado.error

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from django.http import HttpRequest
 
+from acceso.permisos import centros_visibles_para, puede_acceder_version_evidencia
 from centros_costo.models import CentroCosto
 from obligaciones.models import Obligacion
 from trabajadores.models import Trabajador
@@ -47,11 +48,12 @@ def admite_centro(
     )
 
 
-def _trabajadores_operables() -> list[Trabajador]:
+def _trabajadores_operables(centros_ids: set[int]) -> list[Trabajador]:
     return list(
-        Trabajador.objects.filter(
-            asignaciones__centro_costo__es_franquicia=False,
-        ).distinct()
+        trabajador
+        for trabajador in Trabajador.objects.all()
+        if trabajador.centro_costo_actual is not None
+        and trabajador.centro_costo_actual.pk in centros_ids
     )
 
 
@@ -108,16 +110,23 @@ class FiltroOperativo:
             )
         )
 
-    def como_contexto(self) -> dict[str, object]:
+    def como_contexto(self, request: HttpRequest) -> dict[str, object]:
+        centros = centros_visibles_para(request.user)
+        centros_ids = set(centros.values_list("pk", flat=True))
+        obligaciones = [
+            obligacion
+            for obligacion in Obligacion.objects.prefetch_related("versiones").all()
+            if puede_acceder_version_evidencia(request.user, obligacion.version_actual)
+        ]
         return {
             "tipo_centro_seleccionado": self.tipo_centro,
             "tipos_centro": CentroCosto.Tipo.choices,
             "centro_seleccionado": self.centro,
-            "centros": CentroCosto.objects.filter(es_franquicia=False),
+            "centros": centros,
             "obligacion_seleccionada": self.obligacion,
-            "obligaciones": Obligacion.objects.prefetch_related("versiones").all(),
+            "obligaciones": obligaciones,
             "trabajador_seleccionado": self.trabajador,
-            "trabajadores": _trabajadores_operables(),
+            "trabajadores": _trabajadores_operables(centros_ids),
             "titular_seleccionado": self.titular,
             "titulares": TITULARES_POR_FILTRO,
         }

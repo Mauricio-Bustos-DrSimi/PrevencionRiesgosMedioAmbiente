@@ -1,7 +1,12 @@
 from django import forms
 
 from centros_costo.models import CentroCosto
-from obligaciones.models import Periodicidad, TitularObligacion, cargos_escritos
+from obligaciones.models import (
+    ClasificacionEvidencia,
+    Periodicidad,
+    TitularObligacion,
+    cargos_escritos,
+)
 
 
 class FormularioObligacion(forms.Form):
@@ -20,6 +25,11 @@ class FormularioObligacion(forms.Form):
         label="Periodicidad",
         choices=Periodicidad.choices,
     )
+    clasificacion_evidencia = forms.ChoiceField(
+        label="Clasificación de la evidencia",
+        choices=ClasificacionEvidencia.choices,
+        initial=ClasificacionEvidencia.GENERAL,
+    )
     tipos_centro = forms.MultipleChoiceField(
         label="Tipos de centro sugeridos",
         choices=CentroCosto.Tipo.choices,
@@ -37,7 +47,6 @@ class FormularioObligacion(forms.Form):
 
     def clean_cargos_sugeridos(self) -> list[str]:
         return cargos_escritos(self.cleaned_data.get("cargos_sugeridos", ""))
-
 
 class FormularioCierre(forms.Form):
     fecha_cierre = forms.DateField(

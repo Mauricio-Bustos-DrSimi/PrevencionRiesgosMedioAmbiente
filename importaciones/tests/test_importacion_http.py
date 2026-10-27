@@ -60,9 +60,9 @@ class ImportacionHttpTests(TestCase):
 
     def test_importa_obligaciones_y_repite_sin_crear_duplicados(self) -> None:
         contenido = (
-            "nombre,norma_origen,titular,periodicidad,tipos_centro,motivo\n"
-            "Obligación importada,DS 594,centro_costo,anual,farmacia,Alta inicial\n"
-            "Obligación inválida,DS 594,desconocido,anual,,Debe rechazarse\n"
+            "nombre,norma_origen,titular,periodicidad,clasificacion_evidencia,tipos_centro,motivo\n"
+            "Obligación importada,DS 594,centro_costo,anual,general,farmacia,Alta inicial\n"
+            "Obligación inválida,DS 594,desconocido,anual,general,,Debe rechazarse\n"
         )
         primera = self._subir("obligaciones", contenido)
         segunda = self._subir("obligaciones", contenido)
@@ -73,8 +73,19 @@ class ImportacionHttpTests(TestCase):
         self.assertContains(segunda, "Rechazadas: 1")
         self.assertEqual(Obligacion.objects.count(), 1)
 
-    def test_importacion_requiere_sysadmin(self) -> None:
+    def test_prevencionista_puede_importar(self) -> None:
         self.client.force_login(self.prevencionista)
         respuesta = self.client.get(reverse("importaciones:importar"))
 
-        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(respuesta.status_code, 200)
+
+    def test_importacion_rechaza_obligacion_sin_clasificacion_explicita(self) -> None:
+        respuesta = self._subir(
+            "obligaciones",
+            "nombre,norma_origen,titular,periodicidad,tipos_centro,motivo\n"
+            "Examen sin clasificar,Fuente ficticia,trabajador,por_evento,,Alta\n",
+        )
+
+        self.assertContains(respuesta, "Aceptadas: 0")
+        self.assertContains(respuesta, "Rechazadas: 1")
+        self.assertFalse(Obligacion.objects.exists())

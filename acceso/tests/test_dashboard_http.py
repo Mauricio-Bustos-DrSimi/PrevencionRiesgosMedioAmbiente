@@ -156,7 +156,9 @@ class DashboardHttpTests(TestCase):
         reloj.assert_called_once_with()
         servicio.assert_called_once_with(en_fecha=self.fecha)
         dotacion.assert_called_once_with(en_fecha=self.fecha)
-        self.assertEqual(len(consultas), 5)
+        # Incluye la consulta de alcance por rol; las tarjetas comparten el
+        # mismo resumen y no agregan una consulta independiente por KPI.
+        self.assertEqual(len(consultas), 6)
         self.assertContains(respuesta, "09/09/2026")
         self.assertContains(respuesta, "Vencidas")
         self.assertContains(respuesta, "Sin evidencia")
@@ -236,6 +238,6 @@ class DashboardHttpTests(TestCase):
             patch("acceso.views.leer_dotacion", return_value=self._dotacion()),
         ):
             administracion = self.client.get("/")
-        self.assertNotContains(administracion, "Validar evidencias")
+        self.assertContains(administracion, "Validar evidencias")
         self.assertContains(administracion, reverse("trabajadores:crear"))
         self.assertNotContains(administracion, "<script")

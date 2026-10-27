@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guía para completar el levantamiento de decisiones — Ticket 05</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --petroleo: #123b45;
+      --petroleo-claro: #e7f0f2;
+      --texto: #17252a;
+      --borde: #cbd7db;
+      --respuesta: #fff2cc;
+      --fondo: #f5f7f8;
+      --blanco: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--texto);
+      background: var(--fondo);
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 24px 64px;
+    }
+    header, section {
+      margin-bottom: 24px;
+      padding: 24px;
+      border: 1px solid var(--borde);
+      border-radius: 12px;
+      background: var(--blanco);
+      box-shadow: 0 3px 12px rgba(18, 59, 69, 0.08);
+    }
+    header { border-top: 8px solid var(--petroleo); }
+    h1, h2, h3 { color: var(--petroleo); line-height: 1.25; }
+    h1 { margin-top: 0; font-size: 2rem; }
+    h2 { margin-top: 0; font-size: 1.45rem; }
+    h3 { margin-top: 24px; font-size: 1.1rem; }
+    p:last-child { margin-bottom: 0; }
+    .aviso {
+      padding: 14px 16px;
+      border-left: 5px solid #a05a00;
+      background: var(--respuesta);
+    }
+    .pasos li { margin-bottom: 8px; }
+    .tabla {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+    }
+    .tabla th, .tabla td {
+      padding: 10px 12px;
+      border: 1px solid var(--borde);
+      text-align: left;
+      vertical-align: top;
+    }
+    .tabla th {
+      color: var(--blanco);
+      background: var(--petroleo);
+    }
+    .tabla tbody tr:nth-child(even) { background: #f8fafb; }
+    .editable { background: var(--respuesta); }
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: var(--petroleo-claro);
+    }
+    .termino {
+      margin: 10px 0;
+      padding: 12px 14px;
+      border-left: 4px solid var(--petroleo);
+      background: var(--petroleo-claro);
+    }
+    .lista-control li { margin: 7px 0; }
+    @media print {
+      body { background: white; font-size: 11pt; }
+      main { max-width: none; padding: 0; }
+      header, section { box-shadow: none; break-inside: avoid; }
+      .tabla { font-size: 9pt; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Guía para completar el levantamiento de decisiones</h1>
+    <p><strong>Ticket 05:</strong> Correcciones de permisos para Encargado y Lector.</p>
+    <p>Esta guía acompaña al archivo <code>levantamiento-decisiones-ticket-05.xlsx</code>. Su propósito es ayudar a Prevención a definir, con palabras simples, qué puede ver y hacer cada perfil dentro de la aplicación.</p>
+    <p class="aviso"><strong>No incluya información real:</strong> no escriba nombres de trabajadores, RUT, contraseñas, nombres de archivos ni contenido de evidencias. En la hoja de asignaciones se deben incorporar usuarios y centros reales solamente cuando exista autorización formal para hacerlo.</p>
+  </header>
+
+  <section>
+    <h2>Orden recomendado</h2>
+    <ol class="pasos">
+      <li>Lea la hoja <strong>Instrucciones</strong>.</li>
+      <li>Responda las preguntas de <strong>Decisiones generales</strong>.</li>
+      <li>Complete la <strong>Matriz de permisos</strong> usando esas decisiones.</li>
+      <li>Defina el formato de <strong>Asignación Encargado–Centro</strong>, sin ingresar personas reales todavía.</li>
+      <li>Complete <strong>Privacidad y clasificación</strong>.</li>
+      <li>Registre la aprobación formal en la hoja <strong>Aprobación</strong>.</li>
+    </ol>
+    <p>En el Excel, las celdas amarillas son las que deben completarse. Si falta información, seleccione <strong>Pendiente</strong> y explique qué documento o decisión falta.</p>
+  </section>
+
+  <section>
+    <h2>Perfiles de usuario</h2>
+    <div class="termino"><strong>Prevencionista:</strong> persona del área de Prevención que revisa todos los centros, valida evidencias y administra los planes de aplicación.</div>
+    <div class="termino"><strong>Sysadmin:</strong> persona que administra técnicamente la aplicación, las cuentas, las importaciones y el panel de administración. Tener este perfil no reemplaza la aprobación de negocio.</div>
+    <div class="termino"><strong>Encargado:</strong> persona autorizada para trabajar con uno o más centros definidos. La decisión pendiente es establecer exactamente qué puede consultar y cargar dentro de esos centros.</div>
+    <div class="termino"><strong>Lector:</strong> persona que consulta información aprobada, sin cambiar datos. Debe definirse si ve información global o solamente centros asignados y qué nivel de detalle puede revisar.</div>
+  </section>
+
+  <section>
+    <h2>Valores usados en las listas</h2>
+    <table class="tabla">
+      <thead><tr><th>Valor</th><th>Qué significa</th><th>Cuándo usarlo</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Sí</strong></td><td>La respuesta es afirmativa.</td><td>Cuando la decisión está confirmada.</td></tr>
+        <tr><td><strong>No</strong></td><td>La respuesta es negativa o el perfil no tiene esa capacidad.</td><td>Cuando la prohibición está confirmada.</td></tr>
+        <tr><td><strong>Permitido</strong></td><td>El perfil puede entrar o realizar la acción indicada.</td><td>En las columnas de perfiles.</td></tr>
+        <tr><td><strong>403</strong></td><td>La aplicación rechaza el acceso porque la persona no tiene permiso.</td><td>Como respuesta esperada ante un intento directo no autorizado.</td></tr>
+        <tr><td><strong>Global</strong></td><td>Puede consultar todos los centros incluidos en el sistema.</td><td>Solo cuando se apruebe acceso a todo el universo.</td></tr>
+        <tr><td><strong>Centro asignado</strong></td><td>Solo puede consultar los centros expresamente asociados a su cuenta.</td><td>Normalmente para Encargado y, si se acuerda, para Lector.</td></tr>
+        <tr><td><strong>Pendiente</strong></td><td>Todavía falta una respuesta, fuente o aprobación.</td><td>No debe reemplazarse por una suposición.</td></tr>
+        <tr><td><strong>Respondido</strong></td><td>Existe una respuesta, pero aún no tiene aprobación final.</td><td>Durante la revisión.</td></tr>
+        <tr><td><strong>Aprobado</strong></td><td>La decisión fue confirmada formalmente.</td><td>Solo después de registrar su fuente o acta.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Hoja 1: Instrucciones</h2>
+    <table class="tabla">
+      <thead><tr><th>Columna</th><th>Qué contiene</th><th>Qué se espera</th></tr></thead>
+      <tbody>
+        <tr><td>Campo</td><td>Nombre de la instrucción.</td><td>No modificar.</td></tr>
+        <tr><td>Contenido o respuesta</td><td>Explicación y datos de control del documento.</td><td>Completar la fecha límite y confirmar la versión antes de distribuir el archivo.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Hoja 2: Decisiones generales</h2>
+    <table class="tabla">
+      <thead><tr><th>Columna</th><th>Qué significa</th><th>Qué debe escribir Prevención</th></tr></thead>
+      <tbody>
+        <tr><td>ID</td><td>Código de la pregunta.</td><td>No modificar.</td></tr>
+        <tr><td>Tema</td><td>Asunto que se debe resolver.</td><td>No modificar.</td></tr>
+        <tr><td>Pregunta</td><td>Decisión necesaria para diseñar los permisos.</td><td>Leerla antes de responder.</td></tr>
+        <tr><td>Respuesta de Prevención</td><td>Regla acordada.</td><td>Una respuesta concreta. Ejemplo ficticio: “Un Encargado puede tener hasta dos centros autorizados”.</td></tr>
+        <tr><td>Fuente o acta</td><td>Documento que respalda la respuesta.</td><td>Identificador, nombre y versión del acta, procedimiento o matriz. No adjuntar evidencia de trabajadores.</td></tr>
+        <tr><td>Responsable</td><td>Persona o cargo con autoridad para confirmar la regla.</td><td>Cargo o responsable designado para esta decisión.</td></tr>
+        <tr><td>Fecha</td><td>Día en que se respondió o aprobó.</td><td>Usar formato día-mes-año.</td></tr>
+        <tr><td>Estado</td><td>Avance de la decisión.</td><td>Pendiente, Respondido o Aprobado.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Hoja 3: Matriz de permisos</h2>
+    <p>Cada fila representa una pantalla o acción. El objetivo es decidir el permiso de cada perfil y el alcance de la información.</p>
+    <table class="tabla">
+      <thead><tr><th>Columna</th><th>Qué significa</th><th>Qué se espera</th></tr></thead>
+      <tbody>
+        <tr><td>ID</td><td>Código de la fila.</td><td>No modificar.</td></tr>
+        <tr><td>Ruta o función</td><td>Pantalla o acción que se está evaluando.</td><td>No modificar.</td></tr>
+        <tr><td>Método HTTP</td><td><strong>GET</strong> significa consultar; <strong>POST</strong> significa enviar o confirmar una acción.</td><td>No modificar. Es información para comprender el tipo de uso.</td></tr>
+        <tr><td>Prevencionista</td><td>Acceso de ese perfil.</td><td>Seleccionar Permitido, No o Pendiente.</td></tr>
+        <tr><td>Sysadmin</td><td>Acceso de ese perfil.</td><td>Seleccionar Permitido, No o Pendiente.</td></tr>
+        <tr><td>Encargado</td><td>Acceso del Encargado.</td><td>Seleccionar Permitido solamente si la acción y su alcance fueron aprobados.</td></tr>
+        <tr><td>Lector</td><td>Acceso del Lector.</td><td>Seleccionar Permitido solo para consultas expresamente aprobadas.</td></tr>
+        <tr><td>Alcance por centro</td><td>Indica qué centros puede consultar el perfil.</td><td>Global, Centro asignado o Pendiente.</td></tr>
+        <tr><td>Datos visibles</td><td>Detalle que puede mostrarse.</td><td>Indicar, por ejemplo: “solo cantidades”, “nombre y RUT oculto parcialmente” o “metadatos sin archivo”.</td></tr>
+        <tr><td>¿Puede modificar?</td><td>Indica si la función cambia información de la aplicación.</td><td>Está completado como referencia; no confundirlo con el permiso de cada perfil.</td></tr>
+        <tr><td>Respuesta si se deniega</td><td>Resultado de un intento sin permiso.</td><td>Usar 403 cuando la aplicación debe rechazar el acceso.</td></tr>
+        <tr><td>Observaciones</td><td>Condiciones o excepciones.</td><td>Explicar restricciones de forma breve y comprobable.</td></tr>
+        <tr><td>Fuente o acta</td><td>Respaldo de la decisión.</td><td>Registrar el documento y versión que aprobó la fila.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Hoja 4: Asignación Encargado–Centro</h2>
+    <p>Esta hoja define el formato de la futura relación entre una cuenta y sus centros autorizados. En esta etapa no debe contener asignaciones reales.</p>
+    <table class="tabla">
+      <thead><tr><th>Columna</th><th>Qué se espera</th></tr></thead>
+      <tbody>
+        <tr><td>Usuario corporativo</td><td>Identificador de la cuenta autorizada. Dejar vacío hasta contar con aprobación para usar la nómina real.</td></tr>
+        <tr><td>Centro de costo</td><td>Código oficial del centro autorizado. Dejar vacío por ahora.</td></tr>
+        <tr><td>Fecha de inicio</td><td>Fecha desde la cual la asignación permite acceso.</td></tr>
+        <tr><td>Fecha de término</td><td>Fecha en que termina el acceso. Puede quedar vacía mientras la asignación siga vigente, si esa regla fue aprobada.</td></tr>
+        <tr><td>Motivo</td><td>Razón concreta de la asignación, cambio o término.</td></tr>
+        <tr><td>Responsable que autoriza</td><td>Persona o cargo con autoridad para aprobar el acceso.</td></tr>
+        <tr><td>Fuente documental</td><td>Acta, solicitud o registro corporativo que respalda la asignación.</td></tr>
+        <tr><td>Estado</td><td>Pendiente, Vigente o Terminada.</td></tr>
+      </tbody>
+    </table>
+    <p class="aviso"><strong>Ejemplo ficticio de formato:</strong> usuario <code>encargado.ejemplo</code> y centro <code>CENTRO-DEMO-01</code>. Estos valores solo ilustran cómo completar; no deben cargarse en la aplicación.</p>
+  </section>
+
+  <section>
+    <h2>Hoja 5: Privacidad y clasificación</h2>
+    <p>Esta hoja define qué información puede conocer cada perfil y qué acciones puede realizar sobre ella.</p>
+
+    <h3>Significado de cada tipo de información</h3>
+    <div class="termino"><strong>Estado agregado:</strong> resultado general de un centro sin necesidad de mostrar personas. Para una obligación de trabajadores, refleja el peor estado presente entre quienes deben cumplirla y la cantidad de casos en cada estado. Ejemplo: si una persona está vencida, el centro debe mostrar que existe un incumplimiento aunque las demás estén vigentes.</div>
+    <div class="termino"><strong>Nombre del trabajador:</strong> nombre de una persona identificable. Su visibilidad debe limitarse al trabajo que realmente necesita realizar cada perfil.</div>
+    <div class="termino"><strong>RUT:</strong> identificador personal. Debe decidirse si se oculta completamente, se muestra parcialmente o se permite completo solo en un detalle autorizado.</div>
+    <div class="termino"><strong>Metadatos de evidencia:</strong> información que describe un documento sin abrirlo, como obligación, emisor, fechas, titular, estado de validación y fecha de carga.</div>
+    <div class="termino"><strong>Archivo de evidencia general:</strong> documento que acredita una obligación y que no está clasificado como examen ocupacional. Que sea “general” no significa que todos los perfiles puedan abrirlo.</div>
+    <div class="termino"><strong>Examen ocupacional:</strong> documento de salud asociado a una persona. La decisión ya acordada es que Encargado y Lector no pueden visualizarlo, descargarlo ni verificarlo.</div>
+    <div class="termino"><strong>Hash:</strong> código calculado desde el archivo que permite comprobar si este cambió. No revela por sí solo el contenido, pero sigue asociado a una evidencia y debe respetar sus permisos.</div>
+    <div class="termino"><strong>Bitácora:</strong> historia que registra qué acción se realizó, quién la ejecutó y cuándo. Puede contener contexto personal o sensible, por lo que su acceso también debe definirse.</div>
+
+    <h3>Qué completar en cada columna</h3>
+    <table class="tabla">
+      <thead><tr><th>Columna</th><th>Qué se espera</th></tr></thead>
+      <tbody>
+        <tr><td>Tipo de información</td><td>Concepto evaluado. No modificar.</td></tr>
+        <tr><td>Prevencionista</td><td>Permitido, No o Pendiente para ese tipo de información.</td></tr>
+        <tr><td>Sysadmin</td><td>Permitido, No o Pendiente. El permiso técnico no reemplaza una necesidad de negocio.</td></tr>
+        <tr><td>Encargado</td><td>Definir si accede y limitarlo a sus centros asignados.</td></tr>
+        <tr><td>Lector</td><td>Definir si accede. Se recomienda privilegiar cantidades agregadas y evitar información personal.</td></tr>
+        <tr><td>¿Puede visualizar?</td><td>Indicar si el contenido puede mostrarse en pantalla a los perfiles autorizados.</td></tr>
+        <tr><td>¿Puede descargar?</td><td>Indicar si existe autorización para obtener una copia del archivo.</td></tr>
+        <tr><td>¿Puede verificar integridad?</td><td>Indicar si puede solicitar la comprobación del archivo y dejar ese acto en la bitácora.</td></tr>
+        <tr><td>Observaciones</td><td>Especificar límites: centro asignado, RUT oculto, solo cantidades, sin archivo o cualquier excepción.</td></tr>
+      </tbody>
+    </table>
+    <p>Las columnas “Puede visualizar”, “Puede descargar” y “Puede verificar integridad” describen las acciones posibles sobre el tipo de información. Los permisos concretos de cada perfil deben quedar coherentes con las cuatro columnas de perfiles y con la Matriz de permisos.</p>
+  </section>
+
+  <section>
+    <h2>Hoja 6: Aprobación</h2>
+    <table class="tabla">
+      <thead><tr><th>Campo</th><th>Qué se espera</th></tr></thead>
+      <tbody>
+        <tr><td>Nombre del documento</td><td>Nombre oficial del levantamiento aprobado.</td></tr>
+        <tr><td>Versión</td><td>Número de versión. Debe cambiar cuando una decisión aprobada sea reemplazada.</td></tr>
+        <tr><td>Responsable de Prevención</td><td>Persona con autoridad de negocio para aprobar las reglas.</td></tr>
+        <tr><td>Participantes</td><td>Personas o áreas que revisaron las decisiones.</td></tr>
+        <tr><td>Fecha de aprobación</td><td>Día en que se aprobó la versión.</td></tr>
+        <tr><td>Excepciones</td><td>Casos que no siguen la regla general. Si no existen, escribir “Sin excepciones”.</td></tr>
+        <tr><td>Firma o mecanismo corporativo</td><td>Firma, folio, acta electrónica o sistema corporativo usado para aprobar.</td></tr>
+        <tr><td>Estado final</td><td>Aprobado solo cuando no queden decisiones obligatorias pendientes.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Control antes de entregar a implementación</h2>
+    <ul class="lista-control">
+      <li>Todas las decisiones generales obligatorias están en estado Aprobado.</li>
+      <li>Cada fila de la Matriz de permisos indica el permiso de los cuatro perfiles.</li>
+      <li>Cada permiso define alcance por centro y datos visibles.</li>
+      <li>Encargado no puede consultar otro centro cambiando el número de una dirección.</li>
+      <li>Lector no puede cambiar datos.</li>
+      <li>Encargado y Lector no acceden a exámenes ocupacionales.</li>
+      <li>Se definió qué ocurre al cambiar de centro o desactivar una cuenta.</li>
+      <li>Las decisiones tienen fuente, responsable y fecha.</li>
+      <li>La hoja Aprobación identifica la versión y el mecanismo formal usado.</li>
+      <li>El archivo no contiene datos personales, credenciales ni evidencias reales.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

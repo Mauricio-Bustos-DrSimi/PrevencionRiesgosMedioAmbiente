@@ -1,18 +1,18 @@
 from io import TextIOWrapper
+from typing import cast
 
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import PermissionDenied
+from django.contrib.auth.models import User
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
+
+from acceso.permisos import requiere_modificador_mvp
 
 from .forms import ImportacionForm
 from .services import importar_centros, importar_obligaciones
 
 
-@login_required
+@requiere_modificador_mvp
 def importar(request: HttpRequest) -> HttpResponse:
-    if not request.user.is_superuser:
-        raise PermissionDenied
     formulario = ImportacionForm(request.POST or None, request.FILES or None)
     resultado = None
     if request.method == "POST" and formulario.is_valid():
@@ -21,7 +21,7 @@ def importar(request: HttpRequest) -> HttpResponse:
             encoding="utf-8-sig",
         )
         tipo = formulario.cleaned_data["tipo"]
-        actor = request.user
+        actor = cast(User, request.user)
         if tipo == ImportacionForm.TIPO_CENTROS:
             resultado = importar_centros(archivo, actor)
         else:
@@ -31,3 +31,4 @@ def importar(request: HttpRequest) -> HttpResponse:
         "importaciones/importar.html",
         {"formulario": formulario, "resultado": resultado},
     )
+from acceso.permisos import requiere_modificador_mvp

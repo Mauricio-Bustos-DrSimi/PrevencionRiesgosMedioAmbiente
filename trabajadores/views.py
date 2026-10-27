@@ -3,11 +3,19 @@ from typing import cast
 
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from acceso.permisos import requiere_operador_mvp
+from acceso.permisos import (
+    centros_visibles_para,
+    exigir_acceso_centro,
+    puede_acceder_version_evidencia,
+    puede_modificar_mvp,
+    requiere_modificador_mvp,
+    requiere_operador_mvp,
+)
 from bitacora.registro import ContextoBitacora, registrar_evento
 from evidencias.services import caso_de_trabajador
 from planes_aplicacion.models import CambioAplicabilidad
@@ -35,7 +43,19 @@ from .services import (
 
 @requiere_operador_mvp
 def lista(request: HttpRequest) -> HttpResponse:
-    trabajadores = Trabajador.objects.all()
+    trabajadores: QuerySet[Trabajador] | list[Trabajador]
+    if puede_modificar_mvp(request.user):
+        trabajadores = Trabajador.objects.all()
+    else:
+        centros_ids = set(
+            centros_visibles_para(request.user).values_list("pk", flat=True)
+        )
+        trabajadores = [
+            trabajador
+            for trabajador in Trabajador.objects.all()
+            if trabajador.centro_costo_actual is not None
+            and trabajador.centro_costo_actual.pk in centros_ids
+        ]
     return render(
         request,
         "trabajadores/lista.html",
@@ -52,7 +72,7 @@ def lista(request: HttpRequest) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def crear(request: HttpRequest) -> HttpResponse:
     formulario = TrabajadorForm(request.POST or None)
     error = None
@@ -88,6 +108,13 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
             "La fecha histórica debe usar el formato AAAA-MM-DD."
         )
     fecha_estado = fecha or timezone.localdate()
+    centro_consultado = trabajador.centro_costo_en(fecha)
+    if centro_consultado is not None:
+        exigir_acceso_centro(request.user, centro_consultado)
+    elif not puede_modificar_mvp(request.user):
+        from django.core.exceptions import PermissionDenied
+
+        raise PermissionDenied("No tiene permiso para consultar este trabajador.")
     sugerencias = obligaciones_sugeridas_trabajador(trabajador)
     cambios = cambios_del_plan_trabajador(trabajador, hasta=fecha)
     obligaciones = {
@@ -107,13 +134,14 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
             ),
         }
         for obligacion in obligaciones.values()
+        if puede_acceder_version_evidencia(request.user, obligacion.version_actual)
     ]
     return render(
         request,
         "trabajadores/detalle.html",
         {
             "trabajador": trabajador,
-            "centro": trabajador.centro_costo_en(fecha),
+            "centro": centro_consultado,
             "validado": trabajador.esta_validado(en_fecha=fecha),
             "de_baja": trabajador.esta_de_baja(en_fecha=fecha),
             "sugerencias": sugerencias,
@@ -128,7 +156,7 @@ def detalle(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def validar(request: HttpRequest, pk: int) -> HttpResponse:
     trabajador = get_object_or_404(Trabajador, pk=pk)
     error = None
@@ -154,7 +182,7 @@ def validar(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def trasladar(request: HttpRequest, pk: int) -> HttpResponse:
     trabajador = get_object_or_404(Trabajador, pk=pk)
     formulario = TrasladoForm(request.POST or None)
@@ -183,7 +211,7 @@ def trasladar(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def dar_de_baja(request: HttpRequest, pk: int) -> HttpResponse:
     trabajador = get_object_or_404(Trabajador, pk=pk)
     formulario = MotivoForm(request.POST or None)
@@ -211,7 +239,7 @@ def dar_de_baja(request: HttpRequest, pk: int) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def confirmar_sugerencia(request: HttpRequest, pk: int) -> HttpResponse:
     """Confirma individualmente el plan que el cargo solo sugiere."""
     trabajador = get_object_or_404(Trabajador, pk=pk)
@@ -299,11 +327,11 @@ def _cambiar(request: HttpRequest, pk: int, *, aplica: bool) -> HttpResponse:
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def agregar(request: HttpRequest, pk: int) -> HttpResponse:
     return _cambiar(request, pk, aplica=True)
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def no_aplica(request: HttpRequest, pk: int) -> HttpResponse:
     return _cambiar(request, pk, aplica=False)

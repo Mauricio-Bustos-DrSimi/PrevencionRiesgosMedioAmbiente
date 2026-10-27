@@ -59,6 +59,7 @@ class TrazabilidadHttpTests(TestCase):
                 "norma_origen": "DS 594, artículo 45",
                 "titular": "centro_costo",
                 "periodicidad": "anual",
+                "clasificacion_evidencia": "general",
                 "motivo": "Alta del recorrido fiscalizable",
                 "_save": "Guardar",
             },
@@ -213,9 +214,17 @@ class TrazabilidadHttpTests(TestCase):
         )
 
         recorrido = self.client.get(url_recorrido)
-        verificacion_original = self.client.get(url_integridad)
+        confirmacion = self.client.get(url_integridad)
 
         self.assertContains(recorrido, url_integridad)
+        self.assertContains(recorrido, 'method="post"')
+        self.assertContains(recorrido, "csrfmiddlewaretoken")
+        self.assertContains(confirmacion, "Confirmar verificación de integridad")
+        self.assertFalse(
+            EventoBitacora.objects.filter(accion="verificar_integridad").exists()
+        )
+
+        verificacion_original = self.client.post(url_integridad)
         self.assertEqual(verificacion_original.status_code, 200)
         self.assertContains(verificacion_original, "Integridad del archivo")
         self.assertContains(verificacion_original, "Coincide")
@@ -223,7 +232,7 @@ class TrazabilidadHttpTests(TestCase):
 
         Path(evidencia.archivo.path).write_bytes(b"archivo alterado")
 
-        verificacion_alterada = self.client.get(url_integridad)
+        verificacion_alterada = self.client.post(url_integridad)
 
         self.assertEqual(verificacion_alterada.status_code, 200)
         self.assertContains(verificacion_alterada, "No coincide")

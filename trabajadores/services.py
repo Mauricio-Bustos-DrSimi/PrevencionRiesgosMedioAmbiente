@@ -43,6 +43,7 @@ def crear_trabajador(
 
     Nace no validada: quien la crea no la incorpora. Prevención la valida.
     """
+    exigir_prevencionista(actor, "crear un trabajador")
     try:
         canonico = normalizar_rut(rut)
     except RutInvalido as exc:

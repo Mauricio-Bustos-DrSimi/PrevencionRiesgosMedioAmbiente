@@ -187,6 +187,7 @@ class Command(BaseCommand):
             norma_origen=actual.norma_origen,
             titular=actual.titular,
             periodicidad=actual.periodicidad,
+            clasificacion_evidencia=actual.clasificacion_evidencia,
             tipos_centro=actual.tipos_centro,
             cargos_sugeridos=actual.cargos_sugeridos,
             tipo_version=TipoVersion.CIERRE,

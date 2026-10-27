@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from centros_costo.models import CentroCosto
 from obligaciones.models import (
+    ClasificacionEvidencia,
     Obligacion,
     Periodicidad,
     TitularObligacion,
@@ -33,6 +34,10 @@ MENSAJE_TRABAJADOR_AJENO = (
     "{trabajador} no pertenece a {centro}: la dotación y la evidencia no "
     "pueden contradecirse."
 )
+MENSAJE_TRABAJADOR_AJENO_SALUD = (
+    "La persona seleccionada no pertenece al centro de costo indicado: la "
+    "dotación y la evidencia no pueden contradecirse."
+)
 
 
 def exigir_titular_coherente(
@@ -57,6 +62,11 @@ def exigir_titular_coherente(
         if trabajador is None:
             raise ValidationError(MENSAJE_FALTA_TRABAJADOR)
         if trabajador.centro_costo_en(timezone.localdate()) != centro:
+            if (
+                version.clasificacion_evidencia
+                == ClasificacionEvidencia.SALUD_OCUPACIONAL
+            ):
+                raise ValidationError(MENSAJE_TRABAJADOR_AJENO_SALUD)
             raise ValidationError(
                 MENSAJE_TRABAJADOR_AJENO.format(
                     trabajador=trabajador.nombre,

@@ -7,7 +7,13 @@ from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from acceso.permisos import requiere_operador_mvp
+from acceso.permisos import (
+    exigir_acceso_centro,
+    exigir_acceso_version_evidencia,
+    puede_acceder_version_evidencia,
+    requiere_modificador_mvp,
+    requiere_operador_mvp,
+)
 from bitacora.registro import ContextoBitacora, registrar_evento
 from centros_costo.models import CentroCosto
 from evidencias.services import caso_de_cumplimiento, casos_de_la_dotacion
@@ -30,6 +36,7 @@ def _centro(pk: int) -> CentroCosto:
 @requiere_operador_mvp
 def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
     centro = _centro(centro_pk)
+    exigir_acceso_centro(request.user, centro)
     fecha_parametro = request.GET.get("fecha")
     try:
         fecha = date.fromisoformat(fecha_parametro) if fecha_parametro else None
@@ -67,6 +74,7 @@ def plan(request: HttpRequest, centro_pk: int) -> HttpResponse:
             ),
         }
         for obligacion in obligaciones.values()
+        if puede_acceder_version_evidencia(request.user, obligacion.version_actual)
     ]
     return render(
         request,
@@ -89,7 +97,9 @@ def desglose(
 ) -> HttpResponse:
     """Quiénes son las personas que hay detrás del estado agregado."""
     centro = _centro(centro_pk)
+    exigir_acceso_centro(request.user, centro)
     obligacion = get_object_or_404(Obligacion, pk=obligacion_pk)
+    exigir_acceso_version_evidencia(request.user, obligacion.version_actual)
     fecha_parametro = request.GET.get("fecha")
     try:
         fecha = date.fromisoformat(fecha_parametro) if fecha_parametro else None
@@ -119,7 +129,7 @@ def desglose(
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def confirmar_sugerencia(request: HttpRequest, centro_pk: int) -> HttpResponse:
     centro = _centro(centro_pk)
     formulario = MotivoAplicabilidadForm(request.POST or None)
@@ -191,11 +201,11 @@ def _cambiar(request: HttpRequest, centro_pk: int, *, aplica: bool) -> HttpRespo
     )
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def agregar(request: HttpRequest, centro_pk: int) -> HttpResponse:
     return _cambiar(request, centro_pk, aplica=True)
 
 
-@requiere_operador_mvp
+@requiere_modificador_mvp
 def no_aplica(request: HttpRequest, centro_pk: int) -> HttpResponse:
     return _cambiar(request, centro_pk, aplica=False)

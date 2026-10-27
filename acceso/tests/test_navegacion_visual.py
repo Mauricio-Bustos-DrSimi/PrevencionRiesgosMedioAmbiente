@@ -91,7 +91,7 @@ class NavegacionVisualTests(TestCase):
         )
         self.assertEqual(sin_rol.status_code, 403)
 
-    def test_prevencionista_ve_operacion_y_gestion_sin_administracion(self) -> None:
+    def test_prevencionista_ve_operacion_gestion_e_importacion(self) -> None:
         usuario = self.crear_usuario("prevencionista", prevencionista=True)
         self.client.force_login(usuario)
 
@@ -117,7 +117,7 @@ class NavegacionVisualTests(TestCase):
         ):
             self.assertContains(respuesta, texto)
         self.assertNotContains(respuesta, reverse("admin:index"))
-        self.assertNotContains(respuesta, reverse("importaciones:importar"))
+        self.assertContains(respuesta, reverse("importaciones:importar"))
         for nombre_url in (
             "inicio",
             "evidencias:operacion",
@@ -136,7 +136,7 @@ class NavegacionVisualTests(TestCase):
         respuesta = self.client.get("/_pruebas/navegacion/")
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, "Sysadmin")
+        self.assertContains(respuesta, "Administrador")
         self.assertContains(respuesta, reverse("admin:index"))
         self.assertContains(respuesta, reverse("importaciones:importar"))
         self.assertNotContains(respuesta, '<span class="topbar__rol">Prevencionista</span>')
@@ -152,7 +152,7 @@ class NavegacionVisualTests(TestCase):
         respuesta = self.client.get("/_pruebas/navegacion/")
 
         self.assertContains(respuesta, '<span class="topbar__rol">Prevencionista</span>')
-        self.assertContains(respuesta, '<span class="topbar__rol">Sysadmin</span>')
+        self.assertContains(respuesta, '<span class="topbar__rol">Administrador</span>')
 
     def test_entorno_demo_se_muestra_solo_para_valor_exacto_demo(self) -> None:
         usuario = self.crear_usuario("operador_demo", prevencionista=True)
@@ -199,7 +199,10 @@ class NavegacionVisualTests(TestCase):
         with self.assertNumQueries(1):
             contexto = contexto_visual(request)
 
-        self.assertEqual(contexto["roles_visuales"], ("Prevencionista", "Sysadmin"))
+        self.assertEqual(
+            contexto["roles_visuales"],
+            ("Administrador", "Prevencionista"),
+        )
         self.assertTrue(contexto["capacidades"]["puede_validar_evidencias"])
         self.assertTrue(contexto["capacidades"]["puede_administrar"])
 

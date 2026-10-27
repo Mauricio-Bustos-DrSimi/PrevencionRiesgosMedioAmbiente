@@ -292,6 +292,7 @@ class Command(BaseCommand):
             norma_origen=catalogo.norma_origen,
             titular=catalogo.titular,
             periodicidad=catalogo.periodicidad,
+            clasificacion_evidencia=catalogo.clasificacion_evidencia,
             tipos_centro=[CentroCosto.Tipo.BODEGA],
             cargos_sugeridos=cargos or [],
             tipo_version=TipoVersion.ALTA,

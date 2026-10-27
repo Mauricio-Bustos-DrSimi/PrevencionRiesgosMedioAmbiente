@@ -5,7 +5,8 @@
 
 {% block content %}
   <p>Centro de costo: {{ evidencia.centro_costo }}</p>
-        <p>Obligación: {{ evidencia.nombre_obligacion }}</p>
+  <p>Obligación: {{ evidencia.nombre_obligacion }}</p>
+  {% if resultado %}
         <dl class="ficha-datos tarjeta">
           <dt>Hash SHA-256 registrado</dt>
           <dd><code>{{ resultado.hash_registrado }}</code></dd>
@@ -19,5 +20,15 @@
             {% endif %}
           </dd>
         </dl>
-        <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Volver al recorrido de trazabilidad</a></p>
+  {% else %}
+    <section class="tarjeta" aria-labelledby="confirmar-integridad">
+      <h2 id="confirmar-integridad">Confirmar verificación de integridad</h2>
+      <p>La verificación leerá el archivo completo, calculará su hash SHA-256 y registrará la acción en la bitácora.</p>
+      <form class="formulario" method="post">
+        {% csrf_token %}
+        <button class="boton boton--primario" type="submit">Verificar integridad</button>
+      </form>
+    </section>
+  {% endif %}
+  <p><a href="{% url 'bitacora:recorrido' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Volver al recorrido de trazabilidad</a></p>
 {% endblock %}

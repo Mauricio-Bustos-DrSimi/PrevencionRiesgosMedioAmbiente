@@ -17,7 +17,7 @@
           <tbody>
             {% for evento in eventos %}
               <tr>
-                <td>{{ evento.entidad }} — {{ evento.accion }} — {{ evento.descripcion }}</td>
+                <td>{{ evento.entidad }} — {{ evento.accion }} — {% if es_salud_ocupacional %}Acto de salud ocupacional registrado; el detalle sensible se consulta en la evidencia autorizada.{% else %}{{ evento.descripcion }}{% endif %}</td>
                 <td>{{ evento.actor.username }}</td>
                 <td>{{ evento.canal }}</td>
                 <td>{{ evento.ocurrido_en }}</td>
@@ -37,7 +37,7 @@
         <h2>Plan de aplicación</h2>
         <ol class="lista-datos lista-datos--numerada">
           {% for cambio in cambios %}
-            <li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if cambio.trabajador %}{{ cambio.trabajador.nombre }} ({{ cambio.trabajador.rut }}){% else %}Centro de costo{% endif %} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %} — {{ cambio.motivo }}</li>
+            <li>{{ cambio.ocurrido_en }} — {{ cambio.autor.username }} — {% if es_salud_ocupacional %}Titular autorizado{% elif cambio.trabajador %}{{ cambio.trabajador.nombre }} ({{ cambio.trabajador.rut }}){% else %}Centro de costo{% endif %} — {% if cambio.aplica %}Aplica{% else %}No aplica{% endif %}{% if not es_salud_ocupacional %} — {{ cambio.motivo }}{% endif %}</li>
           {% empty %}<li>Sin cambios registrados.</li>{% endfor %}
         </ol>
 
@@ -46,13 +46,18 @@
         <ol class="lista-datos lista-datos--numerada">
           {% for evidencia in evidencias %}
             <li>
-              Evidencia {{ evidencia.pk }} — {{ evidencia.emisor }} — {{ evidencia.fecha_emision }} — cargada por {{ evidencia.cargada_por.username }}
-              {% if evidencia.trabajador %}— a nombre de {{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }}){% else %}— del centro de costo{% endif %}
+              Evidencia {{ evidencia.pk }}{% if not es_salud_ocupacional %} — {{ evidencia.emisor }} — {{ evidencia.fecha_emision }}{% endif %} — cargada por {{ evidencia.cargada_por.username }}
+              {% if es_salud_ocupacional %}— titular reservado{% elif evidencia.trabajador %}— a nombre de {{ evidencia.trabajador.nombre }} ({{ evidencia.trabajador.rut }}){% else %}— del centro de costo{% endif %}
               {% if evidencia.validacion %}— Validación por {{ evidencia.validacion.validada_por.username }} el {{ evidencia.validacion.validada_en }}{% else %}— Pendiente de validación{% endif %}
-              — <a href="{% url 'evidencias:verificar_integridad' evidencia.pk %}">Verificar integridad</a>
+              — <a href="{% url 'evidencias:descargar' evidencia.pk %}">Descargar evidencia</a>
+              —
+              <form method="post" action="{% url 'evidencias:verificar_integridad' evidencia.pk %}" class="formulario-en-linea">
+                {% csrf_token %}
+                <button class="boton boton--secundario" type="submit">Verificar integridad</button>
+              </form>
               <ul class="lista-datos">
                 {% for correccion in evidencia.correcciones.all %}
-                  <li>Corrección de fechas — {{ correccion.ocurrido_en }} — {{ correccion.autor.username }} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}</li>
+                  <li>Corrección de fechas — {{ correccion.ocurrido_en }} — {{ correccion.autor.username }}{% if not es_salud_ocupacional %} — emisión {{ correccion.fecha_emision }}, vencimiento {{ correccion.fecha_vencimiento }} — {{ correccion.motivo }}{% endif %}</li>
                 {% endfor %}
               </ul>
             </li>

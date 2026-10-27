@@ -8,7 +8,11 @@ from evidencias.services import casos_de_cumplimiento
 from trabajadores.services import leer_dotacion
 
 from .dashboard import FiltrosPortada, enlazar_kpis, resumir_casos, url_accion
-from .permisos import es_operador_mvp
+from .permisos import (
+    centros_visibles_para,
+    es_operador_mvp,
+    puede_acceder_version_evidencia,
+)
 
 
 def inicio(request: HttpRequest) -> HttpResponse:
@@ -24,13 +28,17 @@ def inicio(request: HttpRequest) -> HttpResponse:
         request.GET.get("centro", ""),
         request.GET.get("tipo_centro", ""),
     )
-    centros = list(CentroCosto.objects.filter(es_franquicia=False))
+    centros = list(centros_visibles_para(request.user))
     centros_filtrados = [centro for centro in centros if filtros.admite_centro(centro)]
     centros_ids = {centro.pk for centro in centros_filtrados}
     casos = [
         caso
         for caso in casos_de_cumplimiento(en_fecha=fecha_referencia)
         if caso.centro.pk in centros_ids
+        and puede_acceder_version_evidencia(
+            request.user,
+            getattr(caso, "version_obligacion", None),
+        )
     ]
     resumen = enlazar_kpis(resumir_casos(casos), filtros)
     dotacion = leer_dotacion(en_fecha=fecha_referencia)

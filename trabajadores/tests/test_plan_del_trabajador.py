@@ -123,7 +123,7 @@ class SugerenciaPorCargoTests(TestCase):
             autor=self.actor,
         )
 
-    def test_sysadmin_no_ve_acciones_de_dotacion_reservadas_a_prevencion(self) -> None:
+    def test_administrador_conserva_todas_las_acciones_de_dotacion(self) -> None:
         trabajador = self._trabajador(
             "11111111-1",
             CONDUCTOR,
@@ -140,15 +140,15 @@ class SugerenciaPorCargoTests(TestCase):
         )
 
         self.assertEqual(detalle.status_code, 200)
-        self.assertNotContains(
+        self.assertContains(
             detalle,
             reverse("trabajadores:validar", args=[trabajador.pk]),
         )
-        self.assertNotContains(
+        self.assertContains(
             detalle,
             reverse("trabajadores:trasladar", args=[trabajador.pk]),
         )
-        self.assertNotContains(
+        self.assertContains(
             detalle,
             reverse("trabajadores:dar_de_baja", args=[trabajador.pk]),
         )

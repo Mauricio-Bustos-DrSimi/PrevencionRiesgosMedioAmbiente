@@ -9,6 +9,8 @@ from django.views.decorators.debug import sensitive_post_parameters
 
 from bitacora.registro import ContextoBitacora, registrar_evento
 
+from .models import AsignacionEncargadoCentro
+
 
 def _datos_usuario(usuario: User) -> str:
     grupos = ", ".join(usuario.groups.order_by("name").values_list("name", flat=True))
@@ -156,6 +158,48 @@ class GrupoTrazableAdmin(RegistroAdminInmutableMixin, GroupAdmin):
             entidad="Grupo de acceso",
             identificador=grupo.name,
             descripcion=descripcion,
+            canal="Panel administrativo",
+            contexto=ContextoBitacora.general(),
+        )
+
+
+@admin.register(AsignacionEncargadoCentro)
+class AsignacionEncargadoCentroAdmin(admin.ModelAdmin):
+    list_display = ("usuario", "centro_costo", "tipo", "ocurrido_en", "autor")
+    list_filter = ("tipo", "centro_costo")
+    search_fields = ("usuario__username", "centro_costo__codigo_contable")
+    readonly_fields = ("autor", "ocurrido_en")
+
+    def has_change_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return obj is None and request.user.is_superuser
+
+    def has_delete_permission(self, request: HttpRequest, obj: Any = None) -> bool:
+        return False
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return request.user.is_superuser
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: AsignacionEncargadoCentro,
+        form: Any,
+        change: bool,
+    ) -> None:
+        if change:
+            raise PermissionError("Las asignaciones son inmutables.")
+        obj.autor = cast(User, request.user)
+        super().save_model(request, obj, form, change)
+        registrar_evento(
+            actor=request.user,
+            accion=obj.tipo,
+            entidad="Asignación Encargado-Centro",
+            identificador=str(obj.pk),
+            descripcion=(
+                f"Registró {obj.get_tipo_display().lower()} de "
+                f"{obj.usuario.username} para {obj.centro_costo.codigo_contable}. "
+                f"Motivo: {obj.motivo}"
+            ),
             canal="Panel administrativo",
             contexto=ContextoBitacora.general(),
         )

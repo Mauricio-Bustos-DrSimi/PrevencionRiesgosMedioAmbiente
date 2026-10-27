@@ -8,9 +8,10 @@
     <dt>Norma de origen</dt><dd>{{ version_actual.norma_origen }}</dd>
     <dt>Titular de obligación</dt><dd>{{ version_actual.get_titular_display }}</dd>
     <dt>Periodicidad</dt><dd>{{ version_actual.get_periodicidad_display }}</dd>
+    <dt>Clasificación de la evidencia</dt><dd>{{ version_actual.get_clasificacion_evidencia_display }}</dd>
     <dt>Estado</dt><dd>{% if obligacion.esta_vigente %}<span class="estado estado--vigente"><span aria-hidden="true">●</span> Vigente</span>{% else %}Cerrada el {{ version_actual.fecha_cierre }}{% endif %}</dd>
   </dl>
-        {% if obligacion.esta_vigente %}
+        {% if obligacion.esta_vigente and capacidades.puede_modificar %}
           <div class="acciones-en-linea"><a class="boton boton--primario" href="{% url 'obligaciones:corregir' obligacion.pk %}">Corregir</a><a class="boton boton--secundario" href="{% url 'obligaciones:cerrar' obligacion.pk %}">Cerrar</a></div>
         {% endif %}
 
@@ -21,6 +22,7 @@
               Versión {{ version.numero }} — {{ version.get_tipo_version_display }} —
               {{ version.nombre }} — {{ version.norma_origen }} —
               {{ version.get_titular_display }} — {{ version.get_periodicidad_display }} —
+              {{ version.get_clasificacion_evidencia_display }} —
               Autor: {{ version.autor.username }} — Motivo: {{ version.motivo }}
               {% if version.fecha_cierre %}— Fecha de cierre: {{ version.fecha_cierre }}{% endif %}
             </li>

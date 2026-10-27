@@ -38,6 +38,7 @@
           <dt>Estado de cumplimiento</dt>
           <dd>{{ estado }}{% if not validacion %} — No cumplida{% endif %}</dd>
         </dl>
+        <p><a href="{% url 'evidencias:descargar' evidencia.pk %}">Descargar evidencia</a></p>
         {% if error %}<p role="alert">{{ error }}</p>{% endif %}
         {% if puede_renovar %}
           <p><a href="{% url 'evidencias:cargar' evidencia.centro_costo.pk evidencia.obligacion.pk %}">Cargar nueva evidencia</a></p>

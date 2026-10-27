@@ -236,7 +236,7 @@ class RetractarObligacionesTests(TestCase):
         detalle = self.client.get(
             reverse("evidencias:validar", args=[self.evidencia.pk])
         )
-        integridad = self.client.get(
+        integridad = self.client.post(
             reverse("evidencias:verificar_integridad", args=[self.evidencia.pk])
         )
 

@@ -111,7 +111,7 @@ class CargaEvidenciaHttpTests(TestCase):
         self.assertContains(detalle, "No cumplida")
         self.assertContains(detalle, "Validar evidencia")
 
-    def test_sysadmin_no_ve_acciones_reservadas_a_prevencion(self) -> None:
+    def test_administrador_ve_acciones_de_validacion_y_correccion(self) -> None:
         evidencia = self._cargar_evidencia()
         sysadmin = get_user_model().objects.create_superuser(
             username="sysadmin_solo_lectura",
@@ -124,8 +124,8 @@ class CargaEvidenciaHttpTests(TestCase):
         )
 
         self.assertEqual(detalle.status_code, 200)
-        self.assertNotContains(detalle, ">Validar evidencia</button>")
-        self.assertNotContains(detalle, "Registrar corrección de fechas")
+        self.assertContains(detalle, ">Validar evidencia</button>")
+        self.assertContains(detalle, "Registrar corrección de fechas")
 
     def test_validacion_deriva_vigente_y_registra_identidad_y_bitacora(self) -> None:
         evidencia = self._cargar_evidencia()
@@ -181,7 +181,7 @@ class CargaEvidenciaHttpTests(TestCase):
             404,
         )
 
-    def test_sysadmin_sin_rol_prevencionista_no_puede_validar(self) -> None:
+    def test_administrador_sin_grupo_prevencionista_puede_validar(self) -> None:
         evidencia = self._cargar_evidencia()
         sysadmin = get_user_model().objects.create_superuser(
             username="sysadmin_sin_rol_prevencionista",
@@ -193,7 +193,7 @@ class CargaEvidenciaHttpTests(TestCase):
             reverse("evidencias:validar", args=[evidencia.pk]),
         )
 
-        self.assertEqual(respuesta.status_code, 403)
+        self.assertEqual(respuesta.status_code, 302)
 
     def test_periodicidad_anual_limita_la_vigencia_a_un_ano(self) -> None:
         evidencia = self._cargar_evidencia(

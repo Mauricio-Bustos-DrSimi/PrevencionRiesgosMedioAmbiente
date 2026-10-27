@@ -22,6 +22,7 @@ class CatalogoObligacionesTests(TestCase):
                 "norma_origen": "DS 594, artículo 45",
                 "titular": "centro_costo",
                 "periodicidad": "anual",
+                "clasificacion_evidencia": "general",
                 "motivo": "Incorporación del catálogo inicial",
             },
         )
@@ -48,6 +49,7 @@ class CatalogoObligacionesTests(TestCase):
                 "norma_origen": "DS 594, artículos 45 y 48",
                 "titular": "centro_costo",
                 "periodicidad": "anual",
+                "clasificacion_evidencia": "general",
                 "motivo": "Se incorporó la referencia al artículo 48",
             },
         )
@@ -142,6 +144,7 @@ class CatalogoObligacionesTests(TestCase):
                 "norma_origen": "DS 594, artículos 45 y 48",
                 "titular": "centro_costo",
                 "periodicidad": "anual",
+                "clasificacion_evidencia": "general",
                 "motivo": "Corrección trazable",
             },
         )

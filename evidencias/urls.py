@@ -10,6 +10,7 @@ urlpatterns = [
     path("pendientes/", views.pendientes, name="pendientes"),
     path("vencimientos/", views.vencimientos, name="vencimientos"),
     path("<int:evidencia_pk>/validar/", views.validar, name="validar"),
+    path("<int:evidencia_pk>/descargar/", views.descargar, name="descargar"),
     path("<int:evidencia_pk>/corregir/", views.corregir, name="corregir"),
     path(
         "<int:evidencia_pk>/verificar-integridad/",

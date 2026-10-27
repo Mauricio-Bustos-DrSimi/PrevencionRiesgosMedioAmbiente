@@ -57,10 +57,12 @@
               <td>
                 {% if caso.estado == "No aplica" %}
                   <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Abrir plan de aplicación</a>
-                {% elif caso.evidencia %}
+                {% elif caso.evidencia and capacidades.puede_modificar %}
                   <a href="{% url 'evidencias:validar' caso.evidencia.pk %}">Abrir evidencia</a>
-                {% else %}
+                {% elif capacidades.puede_modificar %}
                   <a href="{% url 'evidencias:cargar' caso.centro.pk caso.obligacion.pk %}">Cargar evidencia</a>
+                {% else %}
+                  <a href="{% url 'planes_aplicacion:plan' caso.centro.pk %}">Consultar plan</a>
                 {% endif %}
               </td>
             </tr>

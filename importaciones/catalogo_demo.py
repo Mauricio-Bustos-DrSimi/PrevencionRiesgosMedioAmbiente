@@ -15,7 +15,11 @@ solo deriva la consecuencia de la regla que se le dé.
 
 from dataclasses import dataclass
 
-from obligaciones.models import Periodicidad, TitularObligacion
+from obligaciones.models import (
+    ClasificacionEvidencia,
+    Periodicidad,
+    TitularObligacion,
+)
 
 
 @dataclass(frozen=True)
@@ -25,6 +29,7 @@ class ObligacionCatalogo:
     norma_origen: str
     periodicidad: Periodicidad
     titular: TitularObligacion = TitularObligacion.CENTRO_COSTO
+    clasificacion_evidencia: ClasificacionEvidencia = ClasificacionEvidencia.GENERAL
     aplica: bool = True
     motivo: str = ""
 
@@ -84,21 +89,25 @@ CATALOGO: dict[str, ObligacionCatalogo] = {
         norma_origen="Protocolo de vigilancia para trabajo en altura física (Ley 16.744)",
         periodicidad=Periodicidad.ANUAL,
         titular=TitularObligacion.TRABAJADOR,
+        clasificacion_evidencia=ClasificacionEvidencia.SALUD_OCUPACIONAL,
     ),
     "Examen ocupacional de conductor clase D": ObligacionCatalogo(
         norma_origen="Ley 18.290 y DS 594",
         periodicidad=Periodicidad.ANUAL,
         titular=TitularObligacion.TRABAJADOR,
+        clasificacion_evidencia=ClasificacionEvidencia.SALUD_OCUPACIONAL,
     ),
     "Examen ocupacional de operadores de maquinaria": ObligacionCatalogo(
         norma_origen="DS 594 y protocolos de vigilancia (Ley 16.744)",
         periodicidad=Periodicidad.ANUAL,
         titular=TitularObligacion.TRABAJADOR,
+        clasificacion_evidencia=ClasificacionEvidencia.SALUD_OCUPACIONAL,
     ),
     "Examen ocupacional de conductor de vehículo liviano": ObligacionCatalogo(
         norma_origen="Ley 18.290 y DS 594",
         periodicidad=Periodicidad.ANUAL,
         titular=TitularObligacion.TRABAJADOR,
+        clasificacion_evidencia=ClasificacionEvidencia.SALUD_OCUPACIONAL,
     ),
     "Licencia de conducir": ObligacionCatalogo(
         norma_origen="Ley 18.290, ley de tránsito",

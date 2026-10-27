@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, cast
 from django.contrib.auth.models import AbstractBaseUser, AnonymousUser, User
 
 from bitacora.models import EventoBitacora
+from obligaciones.models import ClasificacionEvidencia
 
 if TYPE_CHECKING:
     from centros_costo.models import CentroCosto
@@ -71,6 +72,23 @@ def registrar_evento(
     """Agrega un acto trazable a la bitácora inmutable del dominio."""
     if not actor.is_authenticated:
         raise ValueError("La bitácora requiere un usuario autenticado como actor.")
+
+    es_salud_ocupacional = False
+    if contexto.evidencia is not None:
+        es_salud_ocupacional = (
+            contexto.evidencia.version_obligacion.clasificacion_evidencia
+            == ClasificacionEvidencia.SALUD_OCUPACIONAL
+        )
+    elif contexto.obligacion is not None and contexto.obligacion.versiones.exists():
+        es_salud_ocupacional = contexto.obligacion.versiones.filter(
+            clasificacion_evidencia=ClasificacionEvidencia.SALUD_OCUPACIONAL
+        ).exists()
+    if es_salud_ocupacional:
+        descripcion = "Acto relacionado con salud ocupacional registrado."
+        if contexto.evidencia is not None:
+            identificador = str(contexto.evidencia.pk)
+        elif contexto.obligacion is not None:
+            identificador = str(contexto.obligacion.pk)
 
     return EventoBitacora.objects.create(
         actor=cast(User, actor),
